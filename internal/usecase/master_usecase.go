@@ -1,0 +1,27 @@
+package usecase
+
+import (
+	"backend_go/internal/models"
+	"backend_go/internal/repository"
+)
+
+type MasterUseCase interface {
+	GetPatientCategories() ([]models.PatientCategory, error)
+	GetGenders() ([]models.Gender, error)
+}
+
+type masterUseCase struct {
+	masterRepo repository.MasterRepository
+}
+
+func NewMasterUseCase(masterRepo repository.MasterRepository) MasterUseCase {
+	return &masterUseCase{masterRepo}
+}
+
+func (u *masterUseCase) GetPatientCategories() ([]models.PatientCategory, error) {
+	return u.masterRepo.GetPatientCategories()
+}
+
+func (u *masterUseCase) GetGenders() ([]models.Gender, error) {
+	return u.masterRepo.GetGenders()
+}
