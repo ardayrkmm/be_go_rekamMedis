@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"strings"
 
 	"backend_go/internal/models"
 	"backend_go/internal/usecase"
@@ -47,7 +48,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	token, user, err := h.authUC.Login(req.Email, req.Password)
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	token, user, err := h.authUC.Login(email, req.Password)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusUnauthorized, err.Error(), nil)
 		return

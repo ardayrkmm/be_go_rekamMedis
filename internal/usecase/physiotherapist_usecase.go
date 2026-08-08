@@ -4,6 +4,7 @@ import (
 	"backend_go/internal/models"
 	"backend_go/internal/repository"
 	"backend_go/pkg/utils"
+	"strings"
 	"time"
 )
 
@@ -50,7 +51,7 @@ func (u *physiotherapistUseCase) Store(physio *models.Physiotherapist) error {
 		}
 		user := &models.User{
 			Name:     physio.Name,
-			Email:    physio.Email,
+			Email:    strings.ToLower(strings.TrimSpace(physio.Email)),
 			Password: hashedPassword,
 			Role:     string(models.RoleFisioterapis),
 		}

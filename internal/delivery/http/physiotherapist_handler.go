@@ -6,8 +6,10 @@ import (
 
 	"backend_go/internal/models"
 	"backend_go/internal/usecase"
+	"backend_go/internal/middleware"
 
 	"backend_go/pkg/utils"
+	"fmt"
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,13 +23,14 @@ func NewPhysiotherapistHandler(api *gin.RouterGroup, physioUC usecase.Physiother
 	}
 
 	group := api.Group("/physiotherapists")
+	adminOnly := middleware.RoleMiddleware(string(models.RoleAdmin), string(models.RoleOwner))
 	{
 		group.GET("", handler.Fetch)
 		group.GET("/:id", handler.GetByID)
-		group.POST("", handler.Store)
-		group.PUT("/:id", handler.Update)
-		group.DELETE("/:id", handler.Delete)
-		group.POST("/:id/restore", handler.Restore)
+		group.POST("", adminOnly, handler.Store)
+		group.PUT("/:id", adminOnly, handler.Update)
+		group.DELETE("/:id", adminOnly, handler.Delete)
+		group.POST("/:id/restore", adminOnly, handler.Restore)
 	}
 }
 
@@ -63,6 +66,8 @@ func (h *PhysiotherapistHandler) Store(c *gin.Context) {
 		utils.HandleValidationError(c, err)
 		return
 	}
+	
+	fmt.Printf("Received Physio: %+v\n", physio)
 
 	if err := h.physioUC.Store(&physio); err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error(), nil)

@@ -17,6 +17,7 @@ type TherapySessionRepository interface {
 	Update(session *models.TherapySession) error
 	Delete(id string) error
 	GetWeeklySchedule(startDate, endDate string) ([]models.TherapySession, error)
+	HasTreatedPatient(physioID, patientID string) (bool, error)
 }
 
 type therapySessionRepository struct {
@@ -46,6 +47,7 @@ func (r *therapySessionRepository) FindAll(offset, limit int) ([]models.TherapyS
 		var item models.TherapySession
 		doc.DataTo(&item)
 		item.ID = doc.Ref.ID
+		r.populateRelations(ctx, &item)
 		items = append(items, item)
 	}
 
@@ -61,6 +63,7 @@ func (r *therapySessionRepository) FindByID(id string) (*models.TherapySession, 
 	var item models.TherapySession
 	doc.DataTo(&item)
 	item.ID = doc.Ref.ID
+	r.populateRelations(ctx, &item)
 	return &item, nil
 }
 
@@ -79,6 +82,7 @@ func (r *therapySessionRepository) FindByAppointmentID(appointmentID string) ([]
 		var item models.TherapySession
 		doc.DataTo(&item)
 		item.ID = doc.Ref.ID
+		r.populateRelations(ctx, &item)
 		items = append(items, item)
 	}
 	return items, nil
@@ -123,7 +127,83 @@ func (r *therapySessionRepository) GetWeeklySchedule(startDate, endDate string) 
 		doc.DataTo(&item)
 		if item.DeletedAt != nil { continue }
 		item.ID = doc.Ref.ID
+		r.populateRelations(ctx, &item)
 		items = append(items, item)
 	}
 	return items, nil
 }
+
+func (r *therapySessionRepository) populateRelations(ctx context.Context, item *models.TherapySession) {
+	if item.PatientID != "" {
+		var pat models.Patient
+		doc, err := r.db.Collection("patients").Doc(item.PatientID).Get(ctx)
+		if err == nil {
+			doc.DataTo(&pat)
+			pat.ID = doc.Ref.ID
+			item.Patient = &pat
+		}
+	}
+	if item.PhysiotherapistID != "" {
+		var phys models.Physiotherapist
+		doc, err := r.db.Collection("physiotherapists").Doc(item.PhysiotherapistID).Get(ctx)
+		if err == nil {
+			doc.DataTo(&phys)
+			phys.ID = doc.Ref.ID
+			item.Physiotherapist = &phys
+		}
+	}
+	if len(item.ServiceMasterIDs) > 0 {
+		var srvs []models.ServiceMaster
+		for _, id := range item.ServiceMasterIDs {
+			var srv models.ServiceMaster
+			doc, err := r.db.Collection("servicemasters").Doc(id).Get(ctx)
+			if err == nil {
+				doc.DataTo(&srv)
+				srv.ID = doc.Ref.ID
+				srvs = append(srvs, srv)
+			}
+		}
+		item.ServiceMasters = srvs
+		if len(srvs) > 0 {
+			item.ServiceMaster = &srvs[0]
+			if item.ServiceMasterID == "" {
+				item.ServiceMasterID = srvs[0].ID
+			}
+		}
+	} else if item.ServiceMasterID != "" {
+		var srv models.ServiceMaster
+		doc, err := r.db.Collection("servicemasters").Doc(item.ServiceMasterID).Get(ctx)
+		if err == nil {
+			doc.DataTo(&srv)
+			srv.ID = doc.Ref.ID
+			item.ServiceMaster = &srv
+			item.ServiceMasters = []models.ServiceMaster{srv}
+		}
+	}
+	if item.AppointmentID != "" {
+		var apt models.Appointment
+		doc, err := r.db.Collection("appointments").Doc(item.AppointmentID).Get(ctx)
+		if err == nil {
+			doc.DataTo(&apt)
+			apt.ID = doc.Ref.ID
+			item.Appointment = &apt
+		}
+	}
+}
+
+func (r *therapySessionRepository) HasTreatedPatient(physioID, patientID string) (bool, error) {
+	ctx := context.Background()
+	iter := r.db.Collection("therapysessions").Where("PhysiotherapistID", "==", physioID).Where("PatientID", "==", patientID).Where("DeletedAt", "==", nil).Limit(1).Documents(ctx)
+	defer iter.Stop()
+	
+	_, err := iter.Next()
+	if err == iterator.Done {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+

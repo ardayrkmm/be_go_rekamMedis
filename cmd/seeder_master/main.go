@@ -20,12 +20,13 @@ func main() {
 
 	// 1. Patient Categories
 	categories := []models.PatientCategory{
-		{Name: "Umum", CreatedAt: time.Now(), UpdatedAt: time.Now()},
-		{Name: "BPJS", CreatedAt: time.Now(), UpdatedAt: time.Now()},
+		{Name: "Ny", CreatedAt: time.Now(), UpdatedAt: time.Now()},
+		{Name: "Tn", CreatedAt: time.Now(), UpdatedAt: time.Now()},
+		{Name: "An", CreatedAt: time.Now(), UpdatedAt: time.Now()},
 	}
 
 	for i, cat := range categories {
-		docID := []string{"1", "2"}[i]
+		docID := []string{"1", "2", "3"}[i]
 		if _, err := db.Collection("patientcategories").Doc(docID).Set(ctx, cat); err != nil {
 			log.Fatalf("Failed to create category: %v", err)
 		}

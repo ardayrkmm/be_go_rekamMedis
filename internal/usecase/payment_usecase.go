@@ -6,7 +6,7 @@ import (
 )
 
 type PaymentUseCase interface {
-	Fetch(offset, limit int) ([]models.Payment, int64, error)
+	Fetch(offset, limit int, search, status, startDate, endDate string) ([]models.Payment, int64, error)
 	GetByID(id string) (*models.Payment, error)
 	Store(payment *models.Payment) error
 	Update(id string, payment *models.Payment) error
@@ -42,8 +42,8 @@ func (u *paymentUseCase) populateNames(payment *models.Payment) {
 	}
 }
 
-func (u *paymentUseCase) Fetch(offset, limit int) ([]models.Payment, int64, error) {
-	payments, total, err := u.paymentRepo.FindAll(offset, limit)
+func (u *paymentUseCase) Fetch(offset, limit int, search, status, startDate, endDate string) ([]models.Payment, int64, error) {
+	payments, total, err := u.paymentRepo.FindAll(offset, limit, search, status, startDate, endDate)
 	if err == nil {
 		for i := range payments {
 			u.populateNames(&payments[i])
@@ -61,6 +61,7 @@ func (u *paymentUseCase) GetByID(id string) (*models.Payment, error) {
 }
 
 func (u *paymentUseCase) Store(payment *models.Payment) error {
+	u.populateNames(payment)
 	return u.paymentRepo.Create(payment)
 }
 

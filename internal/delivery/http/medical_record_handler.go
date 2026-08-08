@@ -6,27 +6,35 @@ import (
 
 	"backend_go/internal/models"
 	"backend_go/internal/usecase"
+	"backend_go/internal/middleware"
 
 	"backend_go/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
 type MedicalRecordHandler struct {
-	recordUC usecase.MedicalRecordUseCase
+	recordUC  usecase.MedicalRecordUseCase
+	userUC    usecase.UserUseCase
+	sessionUC usecase.TherapySessionUseCase
+	physioUC  usecase.PhysiotherapistUseCase
 }
 
-func NewMedicalRecordHandler(api *gin.RouterGroup, recordUC usecase.MedicalRecordUseCase) {
+func NewMedicalRecordHandler(api *gin.RouterGroup, recordUC usecase.MedicalRecordUseCase, userUC usecase.UserUseCase, sessionUC usecase.TherapySessionUseCase, physioUC usecase.PhysiotherapistUseCase) {
 	handler := &MedicalRecordHandler{
-		recordUC: recordUC,
+		recordUC:  recordUC,
+		userUC:    userUC,
+		sessionUC: sessionUC,
+		physioUC:  physioUC,
 	}
 
 	group := api.Group("/medical-records")
+	adminOnly := middleware.RoleMiddleware(string(models.RoleAdmin), string(models.RoleOwner))
 	{
 		group.GET("", handler.Fetch)
 		group.GET("/:id", handler.GetByID)
 		group.POST("", handler.Store)
 		group.PUT("/:id", handler.Update)
-		group.DELETE("/:id", handler.Delete)
+		group.DELETE("/:id", adminOnly, handler.Delete)
 	}
 
 	// Histori Rekam Medis Pasien
@@ -45,6 +53,22 @@ func (h *MedicalRecordHandler) Fetch(c *gin.Context) {
 		return
 	}
 
+	userCtx, exists := c.Get("user")
+	if exists {
+		user := userCtx.(models.User)
+		if user.Role == string(models.RoleFisioterapis) {
+			physioID := h.getPhysiotherapistID(user.Email)
+			var filtered []models.MedicalRecord
+			for _, rec := range records {
+				if rec.PhysiotherapistID == physioID {
+					filtered = append(filtered, rec)
+				}
+			}
+			records = filtered
+			total = int64(len(filtered))
+		}
+	}
+
 	utils.SuccessResponsePaginated(c, http.StatusOK, "Success", records, page, perPage, total)
 }
 
@@ -56,11 +80,53 @@ func (h *MedicalRecordHandler) GetByID(c *gin.Context) {
 		return
 	}
 
+	userCtx, exists := c.Get("user")
+	if exists {
+		user := userCtx.(models.User)
+		if user.Role == string(models.RoleFisioterapis) {
+			physioID := h.getPhysiotherapistID(user.Email)
+			if record.PhysiotherapistID != physioID {
+				hasTreated, _ := h.sessionUC.HasTreatedPatient(physioID, record.PatientID)
+				if !hasTreated {
+					utils.ErrorResponse(c, http.StatusForbidden, "Akses ditolak", nil)
+					return
+				}
+			}
+		}
+	}
+
 	utils.SuccessResponse(c, http.StatusOK, "Success", record)
+}
+
+func (h *MedicalRecordHandler) getPhysiotherapistID(email string) string {
+	physios, _, err := h.physioUC.Fetch(0, 1000)
+	if err != nil {
+		return ""
+	}
+	for _, p := range physios {
+		if p.Email == email {
+			return p.ID
+		}
+	}
+	return ""
 }
 
 func (h *MedicalRecordHandler) GetHistory(c *gin.Context) {
 	patientID := c.Param("id")
+
+	userCtx, exists := c.Get("user")
+	if exists {
+		user := userCtx.(models.User)
+		if user.Role == string(models.RoleFisioterapis) {
+			physioID := h.getPhysiotherapistID(user.Email)
+			hasTreated, _ := h.sessionUC.HasTreatedPatient(physioID, patientID)
+			if !hasTreated {
+				utils.ErrorResponse(c, http.StatusForbidden, "Akses ditolak: Anda belum pernah menangani pasien ini", nil)
+				return
+			}
+		}
+	}
+
 	records, err := h.recordUC.GetByPatientID(patientID)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error(), nil)
@@ -75,6 +141,18 @@ func (h *MedicalRecordHandler) Store(c *gin.Context) {
 	if err := c.ShouldBindJSON(&record); err != nil {
 		utils.HandleValidationError(c, err)
 		return
+	}
+
+	userCtx, exists := c.Get("user")
+	if exists {
+		user := userCtx.(models.User)
+		if user.Role == string(models.RoleFisioterapis) {
+			physioID := h.getPhysiotherapistID(user.Email)
+			if record.PhysiotherapistID != physioID {
+				utils.ErrorResponse(c, http.StatusForbidden, "Akses ditolak: Anda tidak bisa membuat catatan klinis untuk fisioterapis lain", nil)
+				return
+			}
+		}
 	}
 
 	if err := h.recordUC.Store(&record); err != nil {
@@ -93,6 +171,26 @@ func (h *MedicalRecordHandler) Update(c *gin.Context) {
 		return
 	}
 
+	userCtx, exists := c.Get("user")
+	if exists {
+		user := userCtx.(models.User)
+		if user.Role == string(models.RoleFisioterapis) {
+			physioID := h.getPhysiotherapistID(user.Email)
+			
+
+			existing, err := h.recordUC.GetByID(id)
+			if err != nil {
+				utils.ErrorResponse(c, http.StatusNotFound, "Rekam medis tidak ditemukan", nil)
+				return
+			}
+
+			if existing.PhysiotherapistID != physioID || record.PhysiotherapistID != physioID {
+				utils.ErrorResponse(c, http.StatusForbidden, "Akses ditolak: Anda tidak berwenang mengedit catatan klinis ini", nil)
+				return
+			}
+		}
+	}
+
 	if err := h.recordUC.Update(id, &record); err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error(), nil)
 		return
@@ -103,6 +201,26 @@ func (h *MedicalRecordHandler) Update(c *gin.Context) {
 
 func (h *MedicalRecordHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
+
+	userCtx, exists := c.Get("user")
+	if exists {
+		user := userCtx.(models.User)
+		if user.Role == string(models.RoleFisioterapis) {
+			physioID := h.getPhysiotherapistID(user.Email)
+			
+			existing, err := h.recordUC.GetByID(id)
+			if err != nil {
+				utils.ErrorResponse(c, http.StatusNotFound, "Rekam medis tidak ditemukan", nil)
+				return
+			}
+
+			if existing.PhysiotherapistID != physioID {
+				utils.ErrorResponse(c, http.StatusForbidden, "Akses ditolak: Anda tidak berwenang menghapus catatan klinis ini", nil)
+				return
+			}
+		}
+	}
+
 	if err := h.recordUC.Delete(id); err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error(), nil)
 		return

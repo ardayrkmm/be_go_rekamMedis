@@ -3,6 +3,8 @@ package http
 import (
 	"net/http"
 	"backend_go/internal/usecase"
+	"backend_go/internal/models"
+	"backend_go/internal/middleware"
 	"backend_go/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -18,14 +20,16 @@ func NewDashboardHandler(api *gin.RouterGroup, uc usecase.DashboardUsecase) {
 	}
 
 	group := api.Group("/dashboard")
+	adminOnly := middleware.RoleMiddleware(string(models.RoleAdmin), string(models.RoleOwner))
+	fisioOnly := middleware.RoleMiddleware(string(models.RoleFisioterapis))
 	{
-		group.GET("/admin", handler.GetAdminDashboard)
-		group.GET("/fisio", handler.GetFisioDashboard)
+		group.GET("/admin", adminOnly, handler.GetAdminDashboard)
+		group.GET("/fisio", fisioOnly, handler.GetFisioDashboard)
 	}
 
 	reportGroup := api.Group("/reports")
 	{
-		reportGroup.GET("/dashboard", handler.GetReportsDashboard)
+		reportGroup.GET("/dashboard", adminOnly, handler.GetReportsDashboard)
 	}
 }
 

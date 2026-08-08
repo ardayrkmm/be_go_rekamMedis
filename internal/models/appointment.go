@@ -6,6 +6,7 @@ import (
 
 type Appointment struct {
 	ID string `firestore:"id,omitempty" json:"id"`
+	VisitNumber       *string        `json:"visit_number"`
 	PatientID string `json:"patient_id"`
 	PhysiotherapistID string `json:"physiotherapist_id"`
 	ServiceMasterID    string         `json:"service_master_id"`
@@ -21,4 +22,5 @@ type Appointment struct {
 	Patient         *Patient         `json:"patient,omitempty"`
 	Physiotherapist *Physiotherapist `json:"physiotherapist,omitempty"`
 	ServiceMaster   *ServiceMaster   `json:"service_master,omitempty"`
+	TherapySession  *TherapySession  `json:"therapy_session,omitempty" firestore:"-"`
 }

@@ -66,7 +66,7 @@ func (r *medicalRecordRepository) FindByID(id string) (*models.MedicalRecord, er
 func (r *medicalRecordRepository) FindByPatientID(patientID string) ([]models.MedicalRecord, error) {
 	ctx := context.Background()
 	var items []models.MedicalRecord
-	iter := r.db.Collection("medicalrecords").Where("PatientID", "==", patientID).Documents(ctx)
+	iter := r.db.Collection("medicalrecords").Where("PatientID", "==", patientID).Where("DeletedAt", "==", nil).Documents(ctx)
 	for {
 		doc, err := iter.Next()
 		if err == iterator.Done {

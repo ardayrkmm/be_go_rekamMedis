@@ -2,6 +2,9 @@ package repository
 
 import (
 	"context"
+	"strings"
+	"sort"
+	"time"
 	"backend_go/internal/models"
 
 	"cloud.google.com/go/firestore"
@@ -9,7 +12,7 @@ import (
 )
 
 type PaymentRepository interface {
-	FindAll(offset, limit int) ([]models.Payment, int64, error)
+	FindAll(offset, limit int, search, status, startDate, endDate string) ([]models.Payment, int64, error)
 	FindByID(id string) (*models.Payment, error)
 	Create(payment *models.Payment) error
 	Update(payment *models.Payment) error
@@ -23,14 +26,12 @@ func NewPaymentRepository(db *firestore.Client) PaymentRepository {
 	return &paymentRepository{db}
 }
 
-func (r *paymentRepository) FindAll(offset, limit int) ([]models.Payment, int64, error) {
+func (r *paymentRepository) FindAll(offset, limit int, search, status, startDate, endDate string) ([]models.Payment, int64, error) {
 	ctx := context.Background()
-	var items []models.Payment
-	var total int64
+	var allItems []models.Payment
 
-	// total omitted for NoSQL
-
-	iter := r.db.Collection("payments").Where("DeletedAt", "==", nil).Offset(offset).Limit(limit).Documents(ctx)
+	// Fetch all undeleted documents
+	iter := r.db.Collection("payments").Where("DeletedAt", "==", nil).Documents(ctx)
 	for {
 		doc, err := iter.Next()
 		if err == iterator.Done {
@@ -42,10 +43,63 @@ func (r *paymentRepository) FindAll(offset, limit int) ([]models.Payment, int64,
 		var item models.Payment
 		doc.DataTo(&item)
 		item.ID = doc.Ref.ID
-		items = append(items, item)
+		allItems = append(allItems, item)
 	}
 
-	return items, total, nil
+	// Filter in Go
+	var filtered []models.Payment
+	var start, end time.Time
+	hasDateFilter := false
+	if startDate != "" && endDate != "" {
+		if s, err := time.Parse("2006-01-02", startDate); err == nil {
+			if e, err := time.Parse("2006-01-02", endDate); err == nil {
+				start = s
+				end = e.Add(24 * time.Hour).Add(-time.Nanosecond)
+				hasDateFilter = true
+			}
+		}
+	}
+
+	for _, item := range allItems {
+		// Filter by status
+		if status != "" && status != "all" && item.Status != status {
+			continue
+		}
+		// Filter by date
+		if hasDateFilter && item.PaymentDate != nil {
+			if item.PaymentDate.Before(start) || item.PaymentDate.After(end) {
+				continue
+			}
+		}
+		// Filter by search (case-insensitive simple match on invoice/patient)
+		if search != "" {
+			searchLower := strings.ToLower(search)
+			if !strings.Contains(strings.ToLower(item.InvoiceNumber), searchLower) &&
+				!strings.Contains(strings.ToLower(item.PatientName), searchLower) &&
+				!strings.Contains(strings.ToLower(item.PhysiotherapistName), searchLower) {
+				continue
+			}
+		}
+		filtered = append(filtered, item)
+	}
+
+	// Sort by created at descending (latest first)
+	sort.Slice(filtered, func(i, j int) bool {
+		return filtered[i].CreatedAt.After(filtered[j].CreatedAt)
+	})
+
+	total := int64(len(filtered))
+
+	// Paginate
+	if offset >= len(filtered) {
+		return []models.Payment{}, total, nil
+	}
+	endIdx := offset + limit
+	if endIdx > len(filtered) {
+		endIdx = len(filtered)
+	}
+
+	return filtered[offset:endIdx], total, nil
 }
 
 func (r *paymentRepository) FindByID(id string) (*models.Payment, error) {

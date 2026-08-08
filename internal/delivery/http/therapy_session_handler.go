@@ -3,9 +3,11 @@ package http
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"backend_go/internal/models"
 	"backend_go/internal/usecase"
+	"backend_go/internal/middleware"
 
 	"backend_go/pkg/utils"
 	"github.com/gin-gonic/gin"
@@ -13,20 +15,25 @@ import (
 
 type TherapySessionHandler struct {
 	sessionUC usecase.TherapySessionUseCase
+	physioUC  usecase.PhysiotherapistUseCase
+	userUC    usecase.UserUseCase
 }
 
-func NewTherapySessionHandler(api *gin.RouterGroup, sessionUC usecase.TherapySessionUseCase) {
+func NewTherapySessionHandler(api *gin.RouterGroup, sessionUC usecase.TherapySessionUseCase, physioUC usecase.PhysiotherapistUseCase, userUC usecase.UserUseCase) {
 	handler := &TherapySessionHandler{
 		sessionUC: sessionUC,
+		physioUC:  physioUC,
+		userUC:    userUC,
 	}
 
 	group := api.Group("/therapy-sessions")
+	adminOnly := middleware.RoleMiddleware(string(models.RoleAdmin), string(models.RoleOwner))
 	{
 		group.GET("", handler.Fetch)
 		group.GET("/:id", handler.GetByID)
-		group.POST("", handler.Store)
+		group.POST("", adminOnly, handler.Store)
 		group.PUT("/:id", handler.Update)
-		group.DELETE("/:id", handler.Delete)
+		group.DELETE("/:id", adminOnly, handler.Delete)
 		group.GET("/weekly-schedule", handler.GetWeeklySchedule)
 	}
 }
@@ -37,6 +44,8 @@ func (h *TherapySessionHandler) Fetch(c *gin.Context) {
 
 	offset := (page - 1) * perPage
 
+	// GLOBAL VISIBILITY: semua role melihat seluruh sesi klinik.
+	// Authorization edit dilakukan saat update/delete.
 	sessions, total, err := h.sessionUC.Fetch(offset, perPage)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error(), nil)
@@ -54,6 +63,8 @@ func (h *TherapySessionHandler) GetByID(c *gin.Context) {
 		return
 	}
 
+	// GLOBAL VISIBILITY: semua role yang terautentikasi bisa membaca detail sesi.
+	// Fisioterapis bisa melihat sesi klinik (termasuk sesi orang lain) agar kalender akurat.
 	utils.SuccessResponse(c, http.StatusOK, "Success", session)
 }
 
@@ -74,10 +85,60 @@ func (h *TherapySessionHandler) Store(c *gin.Context) {
 
 func (h *TherapySessionHandler) Update(c *gin.Context) {
 	id := c.Param("id")
+
+	existing, err := h.sessionUC.GetByID(id)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Session not found", nil)
+		return
+	}
+
+	role, _ := c.Get("role")
+	if role == string(models.RoleFisioterapis) {
+		userID, _ := c.Get("userID")
+		user, err := h.userUC.GetByID(userID.(string))
+		if err != nil {
+			utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized", nil)
+			return
+		}
+		
+		physioID := h.getPhysiotherapistID(user.Email)
+		if existing.PhysiotherapistID != physioID {
+			utils.ErrorResponse(c, http.StatusForbidden, "Akses ditolak: Anda tidak bisa mengubah sesi orang lain", nil)
+			return
+		}
+	}
+
 	var session models.TherapySession
 	if err := c.ShouldBindJSON(&session); err != nil {
 		utils.HandleValidationError(c, err)
 		return
+	}
+
+	// Validate status transition
+	if session.Status != "" && session.Status != existing.Status {
+		valid := false
+		oldStatus := strings.ToLower(existing.Status)
+		newStatus := strings.ToLower(session.Status)
+
+		switch oldStatus {
+		case "scheduled":
+			if newStatus == "patient arrived" || newStatus == "cancelled" || newStatus == "rescheduled" {
+				valid = true
+			}
+		case "patient arrived":
+			if newStatus == "in progress" || newStatus == "cancelled" {
+				valid = true
+			}
+		case "in progress":
+			if newStatus == "completed" {
+				valid = true
+			}
+		}
+		
+		if !valid {
+			utils.ErrorResponse(c, http.StatusBadRequest, "Invalid status transition from "+existing.Status+" to "+session.Status, nil)
+			return
+		}
 	}
 
 	if err := h.sessionUC.Update(id, &session); err != nil {
@@ -114,4 +175,17 @@ func (h *TherapySessionHandler) GetWeeklySchedule(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, http.StatusOK, "Success", sessions)
+}
+
+func (h *TherapySessionHandler) getPhysiotherapistID(email string) string {
+	physios, _, err := h.physioUC.Fetch(0, 1000)
+	if err != nil {
+		return ""
+	}
+	for _, p := range physios {
+		if p.Email == email {
+			return p.ID
+		}
+	}
+	return ""
 }

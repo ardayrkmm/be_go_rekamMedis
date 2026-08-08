@@ -7,6 +7,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"google.golang.org/api/iterator"
+	"fmt"
 )
 
 type AppointmentRepository interface {
@@ -76,6 +77,32 @@ func (r *appointmentRepository) FindAll(offset, limit int) ([]models.Appointment
 				item.ServiceMaster = &sm
 			}
 		}
+
+		// Fetch associated TherapySession if it exists
+		tsIter := r.db.Collection("therapysessions").Where("AppointmentID", "==", item.ID).Limit(1).Documents(ctx)
+		tsDoc, err := tsIter.Next()
+		if err == nil {
+			var ts models.TherapySession
+			tsDoc.DataTo(&ts)
+			ts.ID = tsDoc.Ref.ID
+			item.TherapySession = &ts
+		} else {
+			if err != iterator.Done {
+				fmt.Printf("Error fetching therapy session for appointment %s: %v\n", item.ID, err)
+			} else {
+				// Let's also check if it might be saved under "appointment_id" instead of "AppointmentID"
+				tsIterFallback := r.db.Collection("therapysessions").Where("appointment_id", "==", item.ID).Limit(1).Documents(ctx)
+				tsDocFallback, errFb := tsIterFallback.Next()
+				if errFb == nil {
+					var ts models.TherapySession
+					tsDocFallback.DataTo(&ts)
+					ts.ID = tsDocFallback.Ref.ID
+					item.TherapySession = &ts
+					fmt.Printf("FOUND therapy session using lowercase 'appointment_id' for appointment %s\n", item.ID)
+				}
+			}
+		}
+
 		items = append(items, item)
 	}
 
@@ -97,7 +124,7 @@ func (r *appointmentRepository) FindByID(id string) (*models.Appointment, error)
 func (r *appointmentRepository) FindByPatientID(patientID string) ([]models.Appointment, error) {
 	ctx := context.Background()
 	var items []models.Appointment
-	iter := r.db.Collection("appointments").Where("PatientID", "==", patientID).Documents(ctx)
+	iter := r.db.Collection("appointments").Where("PatientID", "==", patientID).Where("DeletedAt", "==", nil).Documents(ctx)
 	for {
 		doc, err := iter.Next()
 		if err == iterator.Done {

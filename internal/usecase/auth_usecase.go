@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"backend_go/internal/models"
@@ -56,6 +57,7 @@ func (u *authUseCase) Register(user *models.User) error {
 	if user.Role == "" {
 		user.Role = string(models.RoleFisioterapis)
 	}
+	user.Email = strings.ToLower(strings.TrimSpace(user.Email))
 
 	return u.userRepo.Create(user)
 }

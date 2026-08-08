@@ -3,6 +3,8 @@ package usecase
 import (
 	"backend_go/internal/models"
 	"backend_go/internal/repository"
+	"fmt"
+	"time"
 )
 
 type MedicalRecordUseCase interface {
@@ -19,6 +21,7 @@ type medicalRecordUseCase struct {
 	patientRepo repository.PatientRepository
 	physioRepo  repository.PhysiotherapistRepository
 	serviceRepo repository.ServiceMasterRepository
+	appointmentRepo repository.AppointmentRepository
 }
 
 func NewMedicalRecordUseCase(
@@ -26,12 +29,14 @@ func NewMedicalRecordUseCase(
 	patientRepo repository.PatientRepository,
 	physioRepo repository.PhysiotherapistRepository,
 	serviceRepo repository.ServiceMasterRepository,
+	appointmentRepo repository.AppointmentRepository,
 ) MedicalRecordUseCase {
 	return &medicalRecordUseCase{
 		recordRepo:  recordRepo,
 		patientRepo: patientRepo,
 		physioRepo:  physioRepo,
 		serviceRepo: serviceRepo,
+		appointmentRepo: appointmentRepo,
 	}
 }
 
@@ -86,6 +91,19 @@ func (u *medicalRecordUseCase) populateRelations(record *models.MedicalRecord) {
 }
 
 func (u *medicalRecordUseCase) Store(record *models.MedicalRecord) error {
+	// If visit number is empty, try to get it from Appointment, or generate a new one
+	if record.VisitNumber == nil || *record.VisitNumber == "" {
+		if record.AppointmentID != nil && *record.AppointmentID != "" {
+			if apt, err := u.appointmentRepo.FindByID(*record.AppointmentID); err == nil && apt.VisitNumber != nil {
+				record.VisitNumber = apt.VisitNumber
+			}
+		}
+		
+		if record.VisitNumber == nil || *record.VisitNumber == "" {
+			vn := fmt.Sprintf("VIS-%s", time.Now().Format("20060102150405"))
+			record.VisitNumber = &vn
+		}
+	}
 	return u.recordRepo.Create(record)
 }
 
@@ -99,6 +117,7 @@ func (u *medicalRecordUseCase) Update(id string, req *models.MedicalRecord) erro
 	record.PatientID = req.PatientID
 	record.ServiceID = req.ServiceID
 	record.PhysiotherapistID = req.PhysiotherapistID
+	record.AppointmentID = req.AppointmentID
 	record.ExaminationDate = req.ExaminationDate
 	record.Anamnesis = req.Anamnesis
 	record.Diagnosis = req.Diagnosis

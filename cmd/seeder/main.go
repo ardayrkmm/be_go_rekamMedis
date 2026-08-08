@@ -22,7 +22,7 @@ func main() {
 	// 1. Create Admin
 	adminPassword, _ := utils.HashPassword("admin123")
 	admin := models.User{
-		Name:      "Administrator",
+		Name:      "Pemilik",
 		Email:     "admin@klinik.com",
 		Password:  adminPassword,
 		Role:      string(models.RoleAdmin),

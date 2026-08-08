@@ -11,6 +11,7 @@ import (
 type MasterRepository interface {
 	GetPatientCategories() ([]models.PatientCategory, error)
 	GetGenders() ([]models.Gender, error)
+	CreatePatientCategory(category *models.PatientCategory) error
 }
 
 type masterRepository struct {
@@ -35,6 +36,12 @@ func (r *masterRepository) GetPatientCategories() ([]models.PatientCategory, err
 		items = append(items, item)
 	}
 	return items, nil
+}
+
+func (r *masterRepository) CreatePatientCategory(category *models.PatientCategory) error {
+	ctx := context.Background()
+	_, _, err := r.db.Collection("patientcategories").Add(ctx, category)
+	return err
 }
 
 func (r *masterRepository) GetGenders() ([]models.Gender, error) {

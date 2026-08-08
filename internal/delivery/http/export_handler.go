@@ -5,6 +5,8 @@ import (
 
 	"strconv"
 
+	"backend_go/internal/models"
+	"backend_go/internal/middleware"
 	"backend_go/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
@@ -16,8 +18,9 @@ func NewExportHandler(api *gin.RouterGroup) {
 	handler := &ExportHandler{}
 
 	group := api.Group("/export")
+	adminOnly := middleware.RoleMiddleware(string(models.RoleAdmin), string(models.RoleOwner))
 	{
-		group.GET("/invoice/:id", handler.ExportInvoicePDF)
+		group.GET("/invoice/:id", adminOnly, handler.ExportInvoicePDF)
 		group.GET("/medical-record/:id", handler.ExportMedicalRecordPDF)
 	}
 }

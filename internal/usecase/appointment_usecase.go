@@ -3,6 +3,8 @@ package usecase
 import (
 	"backend_go/internal/models"
 	"backend_go/internal/repository"
+	"errors"
+	"fmt"
 	"time"
 )
 
@@ -49,9 +51,29 @@ func (u *appointmentUseCase) GetByPhysiotherapistID(physioID string) ([]models.A
 }
 
 func (u *appointmentUseCase) Store(appointment *models.Appointment) error {
+	// Check for double booking
+	if appointment.PhysiotherapistID != "" && appointment.AppointmentTime != "" {
+		existing, err := u.appointmentRepo.FindByPhysiotherapistID(appointment.PhysiotherapistID)
+		if err == nil {
+			for _, app := range existing {
+				if app.Status != "cancelled" && 
+				   app.AppointmentDate.Format("2006-01-02") == appointment.AppointmentDate.Format("2006-01-02") && 
+				   app.AppointmentTime == appointment.AppointmentTime {
+					return errors.New("Slot waktu ini sudah terisi. Silakan pilih slot lain.")
+				}
+			}
+		}
+	}
+
 	if appointment.Status == "" {
 		appointment.Status = "scheduled"
 	}
+	
+	if appointment.VisitNumber == nil || *appointment.VisitNumber == "" {
+		vn := fmt.Sprintf("VIS-%s", time.Now().Format("20060102150405"))
+		appointment.VisitNumber = &vn
+	}
+
 	err := u.appointmentRepo.Create(appointment)
 	if err != nil {
 		return err

@@ -30,18 +30,26 @@ func (u *dashboardUsecase) GetAdminDashboardData(filter string) (gin.H, error) {
 	revenueToday, _ := u.repo.SumRevenueToday()
 	revenueMonth, _ := u.repo.SumRevenueThisMonth()
 
-	// 2. Build charts (For now, keep it dummy/mock since it requires complex aggregations that might not be needed immediately)
+	// 2. Fetch real data for charts
+	patientsByMonth, _ := u.repo.CountPatientsByMonth()
+	apptsByStatus, _ := u.repo.CountAppointmentsByStatus()
+
+	// Map appointments by status to name and value for frontend BarChart
+	var mappedAppts []gin.H
+	if apptsByStatus != nil {
+		for _, appt := range apptsByStatus {
+			mappedAppts = append(mappedAppts, gin.H{
+				"name":  appt["status"],
+				"value": appt["count"],
+			})
+		}
+	} else {
+		mappedAppts = []gin.H{}
+	}
+
 	charts := gin.H{
-		"patients": []gin.H{
-			{"label": "Jan", "total": 20},
-			{"label": "Feb", "total": 35},
-			{"label": "Mar", "total": totalPatients},
-		},
-		"appointments": []gin.H{
-			{"label": "Jan", "total": 10},
-			{"label": "Feb", "total": 20},
-			{"label": "Mar", "total": totalAppointments},
-		},
+		"patients": patientsByMonth,
+		"appointments": mappedAppts,
 		"revenue": []gin.H{
 			{"label": "Jan", "total": 5000000},
 			{"label": "Feb", "total": 7500000},
@@ -91,26 +99,10 @@ func (u *dashboardUsecase) GetReportsDashboardData() (gin.H, error) {
 	totalFisio, _ := u.repo.CountPhysiotherapists()
 	totalAppointments, _ := u.repo.CountAppointments()
 	
-	// Count total sessions (dummy for now as we don't have CountSessions)
-	totalSessions := 120 
-
-	// Dummy data for appointments by status
-	appointmentsByStatus := []gin.H{
-		{"status": "pending", "count": 15},
-		{"status": "confirmed", "count": 45},
-		{"status": "completed", "count": 30},
-		{"status": "cancelled", "count": 10},
-	}
-
-	// Dummy data for sessions by month
-	sessionsByMonth := []gin.H{
-		{"month": "2026-02", "count": 10},
-		{"month": "2026-03", "count": 25},
-		{"month": "2026-04", "count": 40},
-		{"month": "2026-05", "count": 60},
-		{"month": "2026-06", "count": 55},
-		{"month": "2026-07", "count": 70},
-	}
+	// Real data instead of dummy
+	totalSessions, _ := u.repo.CountTherapySessions()
+	appointmentsByStatus, _ := u.repo.CountAppointmentsByStatus()
+	sessionsByMonth, _ := u.repo.CountTherapySessionsByMonth()
 
 	return gin.H{
 		"summary": gin.H{

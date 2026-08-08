@@ -4,7 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
+	"backend_go/internal/models"
 	"backend_go/internal/usecase"
+	"backend_go/internal/middleware"
 	"backend_go/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -20,6 +22,8 @@ func NewActivityLogHandler(api *gin.RouterGroup, logUC usecase.ActivityLogUseCas
 	}
 
 	group := api.Group("/activity-logs")
+	adminOnly := middleware.RoleMiddleware(string(models.RoleAdmin), string(models.RoleOwner))
+	group.Use(adminOnly)
 	{
 		group.GET("", handler.Fetch)
 		group.GET("/:id", handler.GetByID)

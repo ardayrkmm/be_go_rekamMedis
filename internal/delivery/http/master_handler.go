@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"backend_go/internal/usecase"
+	"backend_go/internal/models"
+	"backend_go/internal/middleware"
 	"backend_go/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -18,7 +20,9 @@ func NewMasterHandler(api *gin.RouterGroup, masterUC usecase.MasterUseCase) {
 		masterUC: masterUC,
 	}
 
+	adminOnly := middleware.RoleMiddleware(string(models.RoleAdmin), string(models.RoleOwner))
 	api.GET("/patient-categories", handler.GetPatientCategories)
+	api.POST("/patient-categories", adminOnly, handler.CreatePatientCategory)
 	api.GET("/genders", handler.GetGenders)
 }
 
@@ -30,6 +34,28 @@ func (h *MasterHandler) GetPatientCategories(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, http.StatusOK, "Success", categories)
+}
+
+func (h *MasterHandler) CreatePatientCategory(c *gin.Context) {
+	var req struct {
+		Name string `json:"name" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid request", nil)
+		return
+	}
+
+	category := models.PatientCategory{
+		Name: req.Name,
+	}
+
+	if err := h.masterUC.CreatePatientCategory(&category); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusCreated, "Category created successfully", category)
 }
 
 func (h *MasterHandler) GetGenders(c *gin.Context) {
