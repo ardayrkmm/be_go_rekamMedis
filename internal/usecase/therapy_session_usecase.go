@@ -80,6 +80,16 @@ func (u *therapySessionUseCase) Store(session *models.TherapySession) error {
 		}
 
 		if len(details) > 0 {
+			if session.AppointmentID != nil {
+				existingPayment, err := u.paymentRepo.FindByAppointmentID(*session.AppointmentID)
+				if err == nil && existingPayment != nil {
+					existingPayment.TherapySessionID = session.ID
+					// We can also update details if we want, but let's just link it
+					u.paymentRepo.Update(existingPayment)
+					return nil
+				}
+			}
+
 			payment := &models.Payment{
 				InvoiceNumber:     "INV-" + time.Now().Format("20060102150405"),
 				TherapySessionID:  session.ID,
@@ -95,6 +105,9 @@ func (u *therapySessionUseCase) Store(session *models.TherapySession) error {
 				PaymentDetails:    details,
 				CreatedAt:         time.Now(),
 				UpdatedAt:         time.Now(),
+			}
+			if session.AppointmentID != nil {
+				payment.AppointmentID = *session.AppointmentID
 			}
 			u.paymentRepo.Create(payment)
 		}

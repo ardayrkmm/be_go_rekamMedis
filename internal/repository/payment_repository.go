@@ -10,6 +10,7 @@ type PaymentRepository interface {
 	FindByID(id string) (*models.Payment, error)
 	Create(payment *models.Payment) error
 	Update(payment *models.Payment) error
+	FindByAppointmentID(appointmentID string) (*models.Payment, error)
 }
 
 type paymentRepository struct {
@@ -60,6 +61,16 @@ func (r *paymentRepository) Create(payment *models.Payment) error {
 	return r.db.Create(payment).Error
 }
 
-func (r *paymentRepository) Update(payment *models.Payment) error {
+func (r *paymentRepository) Update(payment *models.Payment) error
+	FindByAppointmentID(appointmentID string) (*models.Payment, error) {
 	return r.db.Save(payment).Error
+}
+
+func (r *paymentRepository) FindByAppointmentID(appointmentID string) (*models.Payment, error) {
+	var payment models.Payment
+	err := r.db.Where("appointment_id = ?", appointmentID).First(&payment).Error
+	if err != nil {
+		return nil, err
+	}
+	return &payment, nil
 }
