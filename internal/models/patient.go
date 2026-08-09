@@ -29,11 +29,11 @@ type Patient struct {
 	UpdatedAt             time.Time  `json:"updated_at"`
 	DeletedAt             *time.Time `json:"-" firestore:"DeletedAt"`
 
-	// Relasi — tidak buat FK constraint di DB (di-load manual di repository)
-	Category       *PatientCategory `json:"category,omitempty" gorm:"-"`
-	GenderData     *Gender          `json:"gender_data,omitempty" gorm:"-"`
-	Appointments   []Appointment    `json:"appointments,omitempty" gorm:"-"`
-	MedicalRecords []MedicalRecord  `json:"medical_records,omitempty" gorm:"-"`
+	// Relasi
+	Category       *PatientCategory `json:"category,omitempty" gorm:"foreignKey:PatientCategoryID"`
+	GenderData     *Gender          `json:"gender_data,omitempty" gorm:"foreignKey:GenderID"`
+	Appointments []Appointment `json:"appointments,omitempty" gorm:"foreignKey:PatientID;constraint:-"`
+	MedicalRecords []MedicalRecord `json:"medical_records,omitempty" gorm:"foreignKey:PatientID;constraint:-"`
 }
 
 func (m *Patient) BeforeCreate(tx *gorm.DB) (err error) {

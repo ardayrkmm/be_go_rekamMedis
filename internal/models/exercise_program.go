@@ -21,7 +21,7 @@ type ExerciseProgram struct {
 	UpdatedAt        time.Time      `json:"updated_at"`
 	DeletedAt        gorm.DeletedAt `gorm:"index" json:"-"`
 
-	TherapySession *TherapySession `gorm:"-" json:"therapy_session,omitempty"`
+	TherapySession *TherapySession `gorm:"foreignKey:TherapySessionID;constraint:-" json:"therapy_session,omitempty"`
 }
 
 

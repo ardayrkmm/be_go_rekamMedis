@@ -23,8 +23,8 @@ type Physiotherapist struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt *time.Time `json:"-" firestore:"DeletedAt"`
 
-	Appointments   []Appointment   `json:"appointments,omitempty" gorm:"-"`
-	MedicalRecords []MedicalRecord `json:"medical_records,omitempty" gorm:"-"`
+	Appointments []Appointment `json:"appointments,omitempty" gorm:"foreignKey:PatientID;constraint:-"`
+	MedicalRecords []MedicalRecord `json:"medical_records,omitempty" gorm:"foreignKey:PatientID;constraint:-"`
 }
 
 func (p *Physiotherapist) GetPhotoUrl() *string {

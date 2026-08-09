@@ -24,10 +24,10 @@ type TherapySession struct {
 	DeletedAt         *time.Time `json:"-" firestore:"DeletedAt"`
 
 	// Relasi — tidak buat FK constraint di DB
-	Appointment     *Appointment     `json:"appointment,omitempty" gorm:"-"`
-	Patient         *Patient         `json:"patient,omitempty" gorm:"-"`
-	Physiotherapist *Physiotherapist `json:"physiotherapist,omitempty" gorm:"-"`
-	ServiceMaster   *ServiceMaster   `json:"service_master,omitempty" gorm:"-"`
+	Appointment *Appointment `json:"appointment,omitempty" gorm:"foreignKey:AppointmentID;constraint:-"`
+	Patient *Patient `json:"patient,omitempty" gorm:"foreignKey:PatientID;constraint:-"`
+	Physiotherapist *Physiotherapist `json:"physiotherapist,omitempty" gorm:"foreignKey:PhysiotherapistID;constraint:-"`
+	ServiceMaster *ServiceMaster `json:"service_master,omitempty" gorm:"foreignKey:ServiceID;constraint:-"`
 	ServiceMasters  []ServiceMaster  `json:"service_masters,omitempty" gorm:"-"`
 }
 

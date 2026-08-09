@@ -29,11 +29,11 @@ type Payment struct {
 	DeletedAt           *time.Time `json:"-" firestore:"DeletedAt"`
 
 	// Relasi — tidak buat FK constraint di DB
-	TherapySession  *TherapySession  `json:"therapy_session,omitempty" gorm:"-"`
-	Appointment     *Appointment     `json:"appointment,omitempty" gorm:"-"`
-	Patient         *Patient         `json:"patient,omitempty" gorm:"-"`
-	Physiotherapist *Physiotherapist `json:"physiotherapist,omitempty" gorm:"-"`
-	PaymentDetails  []PaymentDetail  `json:"payment_details,omitempty" gorm:"-"`
+	TherapySession *TherapySession `json:"therapy_session,omitempty" gorm:"foreignKey:AppointmentID;constraint:-"`
+	Appointment *Appointment `json:"appointment,omitempty" gorm:"foreignKey:AppointmentID;constraint:-"`
+	Patient *Patient `json:"patient,omitempty" gorm:"foreignKey:PatientID;constraint:-"`
+	Physiotherapist *Physiotherapist `json:"physiotherapist,omitempty" gorm:"foreignKey:PhysiotherapistID;constraint:-"`
+	PaymentDetails []PaymentDetail `json:"payment_details,omitempty" gorm:"foreignKey:PaymentID;constraint:-"`
 }
 
 func (m *Payment) BeforeCreate(tx *gorm.DB) (err error) {
