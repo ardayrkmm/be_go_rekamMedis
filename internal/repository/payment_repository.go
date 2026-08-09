@@ -61,8 +61,7 @@ func (r *paymentRepository) Create(payment *models.Payment) error {
 	return r.db.Create(payment).Error
 }
 
-func (r *paymentRepository) Update(payment *models.Payment) error
-	FindByAppointmentID(appointmentID string) (*models.Payment, error) {
+func (r *paymentRepository) Update(payment *models.Payment) error {
 	return r.db.Save(payment).Error
 }
 
