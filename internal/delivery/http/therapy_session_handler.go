@@ -122,14 +122,14 @@ func (h *TherapySessionHandler) Update(c *gin.Context) {
 
 		switch oldStatus {
 		case "scheduled":
-			if newStatus == "patient arrived" || newStatus == "cancelled" || newStatus == "rescheduled" {
+			if newStatus == "telah_tiba" || newStatus == "patient arrived" || newStatus == "cancelled" || newStatus == "rescheduled" {
 				valid = true
 			}
-		case "patient arrived":
-			if newStatus == "in progress" || newStatus == "cancelled" {
+		case "telah_tiba", "patient arrived":
+			if newStatus == "ongoing" || newStatus == "in progress" || newStatus == "cancelled" {
 				valid = true
 			}
-		case "in progress":
+		case "ongoing", "in progress":
 			if newStatus == "completed" {
 				valid = true
 			}
