@@ -11,6 +11,8 @@ func AutoMigrate(db *gorm.DB) error {
 
 	return db.AutoMigrate(
 		&User{},
+		&Gender{},
+		&ServiceCategory{},
 		&ServiceMaster{},
 		&Physiotherapist{},
 		&PatientCategory{},
