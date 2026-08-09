@@ -1,12 +1,9 @@
 package repository
 
 import (
-	"context"
-	"backend_go/internal/models"
 	"time"
-
-	"cloud.google.com/go/firestore"
-	"google.golang.org/api/iterator"
+	"backend_go/internal/models"
+	"gorm.io/gorm"
 )
 
 type NotificationRepository interface {
@@ -20,97 +17,52 @@ type NotificationRepository interface {
 }
 
 type notificationRepository struct {
-	db *firestore.Client
+	db *gorm.DB
 }
 
-func NewNotificationRepository(db *firestore.Client) NotificationRepository {
+func NewNotificationRepository(db *gorm.DB) NotificationRepository {
 	return &notificationRepository{db}
 }
 
 func (r *notificationRepository) FindAll(offset, limit int) ([]models.Notification, int64, error) {
-	ctx := context.Background()
-	var items []models.Notification
+	var notifications []models.Notification
 	var total int64
-
-	// total omitted for NoSQL
-
-	iter := r.db.Collection("notifications").Where("DeletedAt", "==", nil).Offset(offset).Limit(limit).Documents(ctx)
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, 0, err
-		}
-		var item models.Notification
-		doc.DataTo(&item)
-		item.ID = doc.Ref.ID
-		items = append(items, item)
-	}
-
-	return items, total, nil
-}
-
-func (r *notificationRepository) FindByID(id string) (*models.Notification, error) {
-	ctx := context.Background()
-	doc, err := r.db.Collection("notifications").Doc(id).Get(ctx)
+	err := r.db.Model(&models.Notification{}).Count(&total).Error
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	var item models.Notification
-	doc.DataTo(&item)
-	item.ID = doc.Ref.ID
-	return &item, nil
-}
-
-func (r *notificationRepository) Create(item *models.Notification) error {
-	ctx := context.Background()
-	ref := r.db.Collection("notifications").NewDoc()
-	item.ID = ref.ID
-	_, err := ref.Set(ctx, item)
-	return err
-}
-
-func (r *notificationRepository) Update(item *models.Notification) error {
-	ctx := context.Background()
-	_, err := r.db.Collection("notifications").Doc(item.ID).Set(ctx, item)
-	return err
-}
-
-func (r *notificationRepository) Delete(id string) error {
-	ctx := context.Background()
-	now := time.Now()
-	_, err := r.db.Collection("notifications").Doc(id).Update(ctx, []firestore.Update{
-		{Path: "DeletedAt", Value: &now},
-	})
-	return err
+	err = r.db.Offset(offset).Limit(limit).Find(&notifications).Error
+	return notifications, total, err
 }
 
 func (r *notificationRepository) FindUnread() ([]models.Notification, error) {
-	ctx := context.Background()
-	var items []models.Notification
-	iter := r.db.Collection("notifications").Where("IsRead", "==", false).Documents(ctx)
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done { break }
-		if err != nil { return nil, err }
-		var item models.Notification
-		doc.DataTo(&item)
-		item.ID = doc.Ref.ID
-		items = append(items, item)
+	var notifications []models.Notification
+	err := r.db.Where("read_at IS NULL").Find(&notifications).Error
+	return notifications, err
+}
+
+func (r *notificationRepository) FindByID(id string) (*models.Notification, error) {
+	var notification models.Notification
+	err := r.db.First(&notification, id).Error
+	if err != nil {
+		return nil, err
 	}
-	return items, nil
+	return &notification, nil
+}
+
+func (r *notificationRepository) Create(notification *models.Notification) error {
+	return r.db.Create(notification).Error
+}
+
+func (r *notificationRepository) Update(notification *models.Notification) error {
+	return r.db.Save(notification).Error
+}
+
+func (r *notificationRepository) Delete(id string) error {
+	return r.db.Delete(&models.Notification{}, id).Error
 }
 
 func (r *notificationRepository) MarkAllAsRead() error {
-	ctx := context.Background()
-	iter := r.db.Collection("notifications").Where("IsRead", "==", false).Documents(ctx)
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done { break }
-		if err != nil { return err }
-		doc.Ref.Update(ctx, []firestore.Update{{Path: "IsRead", Value: true}})
-	}
-	return nil
+	now := time.Now()
+	return r.db.Model(&models.Notification{}).Where("read_at IS NULL").Update("read_at", now).Error
 }

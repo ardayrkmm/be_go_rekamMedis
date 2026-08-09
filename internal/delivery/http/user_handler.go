@@ -10,14 +10,14 @@ import (
 
 	"backend_go/pkg/utils"
 	"github.com/gin-gonic/gin"
-	"cloud.google.com/go/firestore"
+	"gorm.io/gorm"
 )
 
 type UserHandler struct {
 	userUC usecase.UserUseCase
 }
 
-func NewUserHandler(api *gin.RouterGroup, userUC usecase.UserUseCase, db *firestore.Client) {
+func NewUserHandler(api *gin.RouterGroup, userUC usecase.UserUseCase, db *gorm.DB) {
 	handler := &UserHandler{
 		userUC: userUC,
 	}

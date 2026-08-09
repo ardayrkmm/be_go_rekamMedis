@@ -5,6 +5,7 @@
 *.so
 *.dylib
 api_linux
+bin/
 
 # OS specific files
 .DS_Store

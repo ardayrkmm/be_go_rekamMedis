@@ -4,15 +4,13 @@ import (
 	"net/http"
 	"strings"
 
-	"context"
-
 	"backend_go/pkg/utils"
 
-	"cloud.google.com/go/firestore"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-func AuthMiddleware(db *firestore.Client) gin.HandlerFunc {
+func AuthMiddleware(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -31,10 +29,9 @@ func AuthMiddleware(db *firestore.Client) gin.HandlerFunc {
 		tokenString := parts[1]
 
 		// Check Blocklist
-		ctx := context.Background()
-		iter := db.Collection("jwt_blocklists").Where("Token", "==", tokenString).Limit(1).Documents(ctx)
-		_, err := iter.Next()
-		if err == nil {
+		var count int64
+		err := db.Table("jwt_blocklists").Where("token = ?", tokenString).Count(&count).Error
+		if err == nil && count > 0 {
 			utils.ErrorResponse(c, http.StatusUnauthorized, "Token has been revoked", nil)
 			c.Abort()
 			return

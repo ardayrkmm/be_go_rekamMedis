@@ -1,12 +1,8 @@
 package repository
 
 import (
-	"context"
 	"backend_go/internal/models"
-	"time"
-
-	"cloud.google.com/go/firestore"
-	"google.golang.org/api/iterator"
+	"gorm.io/gorm"
 )
 
 type ServiceMasterRepository interface {
@@ -18,69 +14,43 @@ type ServiceMasterRepository interface {
 }
 
 type serviceMasterRepository struct {
-	db *firestore.Client
+	db *gorm.DB
 }
 
-func NewServiceMasterRepository(db *firestore.Client) ServiceMasterRepository {
+func NewServiceMasterRepository(db *gorm.DB) ServiceMasterRepository {
 	return &serviceMasterRepository{db}
 }
 
 func (r *serviceMasterRepository) FindAll(offset, limit int) ([]models.ServiceMaster, int64, error) {
-	ctx := context.Background()
-	var items []models.ServiceMaster
+	var services []models.ServiceMaster
 	var total int64
 
-	// total omitted for NoSQL
-
-	iter := r.db.Collection("servicemasters").Where("DeletedAt", "==", nil).Offset(offset).Limit(limit).Documents(ctx)
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, 0, err
-		}
-		var item models.ServiceMaster
-		doc.DataTo(&item)
-		item.ID = doc.Ref.ID
-		items = append(items, item)
+	err := r.db.Model(&models.ServiceMaster{}).Count(&total).Error
+	if err != nil {
+		return nil, 0, err
 	}
 
-	return items, total, nil
+	err = r.db.Offset(offset).Limit(limit).Find(&services).Error
+	return services, total, err
 }
 
 func (r *serviceMasterRepository) FindByID(id string) (*models.ServiceMaster, error) {
-	ctx := context.Background()
-	doc, err := r.db.Collection("servicemasters").Doc(id).Get(ctx)
+	var service models.ServiceMaster
+	err := r.db.First(&service, id).Error
 	if err != nil {
 		return nil, err
 	}
-	var item models.ServiceMaster
-	doc.DataTo(&item)
-	item.ID = doc.Ref.ID
-	return &item, nil
+	return &service, nil
 }
 
-func (r *serviceMasterRepository) Create(item *models.ServiceMaster) error {
-	ctx := context.Background()
-	ref := r.db.Collection("servicemasters").NewDoc()
-	item.ID = ref.ID
-	_, err := ref.Set(ctx, item)
-	return err
+func (r *serviceMasterRepository) Create(service *models.ServiceMaster) error {
+	return r.db.Create(service).Error
 }
 
-func (r *serviceMasterRepository) Update(item *models.ServiceMaster) error {
-	ctx := context.Background()
-	_, err := r.db.Collection("servicemasters").Doc(item.ID).Set(ctx, item)
-	return err
+func (r *serviceMasterRepository) Update(service *models.ServiceMaster) error {
+	return r.db.Save(service).Error
 }
 
 func (r *serviceMasterRepository) Delete(id string) error {
-	ctx := context.Background()
-	now := time.Now()
-	_, err := r.db.Collection("servicemasters").Doc(id).Update(ctx, []firestore.Update{
-		{Path: "DeletedAt", Value: &now},
-	})
-	return err
+	return r.db.Delete(&models.ServiceMaster{}, id).Error
 }

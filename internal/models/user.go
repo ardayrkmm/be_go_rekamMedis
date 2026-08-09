@@ -1,6 +1,9 @@
 package models
 
 import (
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+
 	"time"
 )
 
@@ -15,9 +18,9 @@ const (
 )
 
 type User struct {
-	ID string `firestore:"id,omitempty" json:"id"`
+	ID string `firestore:"id,omitempty" json:"id" gorm:"type:varchar(36);primaryKey"`
 	Name      string         `json:"name"`
-	Email     string         `json:"email"`
+	Email     string         `json:"email" gorm:"uniqueIndex;type:varchar(255)"`
 	Password  string         `json:"-"`
 	Role      string         `json:"role"`
 	Photo     *string        `json:"photo"`
@@ -32,4 +35,12 @@ func (u *User) GetPhotoUrl() *string {
 		return &url
 	}
 	return nil
+}
+
+
+func (m *User) BeforeCreate(tx *gorm.DB) (err error) {
+	if m.ID == "" {
+		m.ID = uuid.New().String()
+	}
+	return
 }

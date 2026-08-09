@@ -1,39 +1,25 @@
 package utils
 
 import (
-	"context"
 	"log"
 	"os"
 
-	"cloud.google.com/go/firestore"
-	firebase "firebase.google.com/go/v4"
-	"google.golang.org/api/option"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
-func ConnectDB() *firestore.Client {
-	ctx := context.Background()
-
-	// Use service account credentials if path is provided, otherwise default to application default credentials
-	var app *firebase.App
-	var err error
-
-	credentialsFile := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
-	if credentialsFile != "" {
-		opt := option.WithCredentialsFile(credentialsFile)
-		app, err = firebase.NewApp(ctx, nil, opt)
-	} else {
-		// Use Application Default Credentials
-		app, err = firebase.NewApp(ctx, nil)
+func ConnectDB() *gorm.DB {
+	// DSN format: user:pass@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local
+	dsn := os.Getenv("DB_DSN")
+	if dsn == "" {
+		// Fallback for development if not set in .env
+		dsn = "root:@tcp(127.0.0.1:3306)/rekam_medis?charset=utf8mb4&parseTime=True&loc=Local"
 	}
 
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("error initializing app: %v\n", err)
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	client, err := app.Firestore(ctx)
-	if err != nil {
-		log.Fatalf("error initializing firestore client: %v\n", err)
-	}
-
-	return client
+	return db
 }

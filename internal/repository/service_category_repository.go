@@ -1,12 +1,8 @@
 package repository
 
 import (
-	"context"
 	"backend_go/internal/models"
-	"time"
-
-	"cloud.google.com/go/firestore"
-	"google.golang.org/api/iterator"
+	"gorm.io/gorm"
 )
 
 type ServiceCategoryRepository interface {
@@ -18,67 +14,43 @@ type ServiceCategoryRepository interface {
 }
 
 type serviceCategoryRepository struct {
-	db *firestore.Client
+	db *gorm.DB
 }
 
-func NewServiceCategoryRepository(db *firestore.Client) ServiceCategoryRepository {
+func NewServiceCategoryRepository(db *gorm.DB) ServiceCategoryRepository {
 	return &serviceCategoryRepository{db}
 }
 
 func (r *serviceCategoryRepository) FindAll(offset, limit int) ([]models.ServiceCategory, int64, error) {
-	ctx := context.Background()
-	var items []models.ServiceCategory
+	var categories []models.ServiceCategory
 	var total int64
 
-	iter := r.db.Collection("service_categories").Where("DeletedAt", "==", nil).Offset(offset).Limit(limit).Documents(ctx)
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, 0, err
-		}
-		var item models.ServiceCategory
-		doc.DataTo(&item)
-		item.ID = doc.Ref.ID
-		items = append(items, item)
+	err := r.db.Model(&models.ServiceCategory{}).Count(&total).Error
+	if err != nil {
+		return nil, 0, err
 	}
 
-	return items, total, nil
+	err = r.db.Offset(offset).Limit(limit).Find(&categories).Error
+	return categories, total, err
 }
 
 func (r *serviceCategoryRepository) FindByID(id string) (*models.ServiceCategory, error) {
-	ctx := context.Background()
-	doc, err := r.db.Collection("service_categories").Doc(id).Get(ctx)
+	var category models.ServiceCategory
+	err := r.db.First(&category, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
-	var item models.ServiceCategory
-	doc.DataTo(&item)
-	item.ID = doc.Ref.ID
-	return &item, nil
+	return &category, nil
 }
 
 func (r *serviceCategoryRepository) Create(item *models.ServiceCategory) error {
-	ctx := context.Background()
-	ref := r.db.Collection("service_categories").NewDoc()
-	item.ID = ref.ID
-	_, err := ref.Set(ctx, item)
-	return err
+	return r.db.Create(item).Error
 }
 
 func (r *serviceCategoryRepository) Update(item *models.ServiceCategory) error {
-	ctx := context.Background()
-	_, err := r.db.Collection("service_categories").Doc(item.ID).Set(ctx, item)
-	return err
+	return r.db.Save(item).Error
 }
 
 func (r *serviceCategoryRepository) Delete(id string) error {
-	ctx := context.Background()
-	now := time.Now()
-	_, err := r.db.Collection("service_categories").Doc(id).Update(ctx, []firestore.Update{
-		{Path: "DeletedAt", Value: &now},
-	})
-	return err
+	return r.db.Delete(&models.ServiceCategory{}, "id = ?", id).Error
 }

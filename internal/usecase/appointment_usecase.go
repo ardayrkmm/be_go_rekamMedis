@@ -57,6 +57,7 @@ func (u *appointmentUseCase) Store(appointment *models.Appointment) error {
 		if err == nil {
 			for _, app := range existing {
 				if app.Status != "cancelled" && 
+				   app.AppointmentDate != nil && appointment.AppointmentDate != nil &&
 				   app.AppointmentDate.Format("2006-01-02") == appointment.AppointmentDate.Format("2006-01-02") && 
 				   app.AppointmentTime == appointment.AppointmentTime {
 					return errors.New("Slot waktu ini sudah terisi. Silakan pilih slot lain.")

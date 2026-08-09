@@ -1,12 +1,8 @@
 package repository
 
 import (
-	"context"
 	"backend_go/internal/models"
-	"time"
-
-	"cloud.google.com/go/firestore"
-	"google.golang.org/api/iterator"
+	"gorm.io/gorm"
 )
 
 type PatientRepository interface {
@@ -19,78 +15,47 @@ type PatientRepository interface {
 }
 
 type patientRepository struct {
-	db *firestore.Client
+	db *gorm.DB
 }
 
-func NewPatientRepository(db *firestore.Client) PatientRepository {
+func NewPatientRepository(db *gorm.DB) PatientRepository {
 	return &patientRepository{db}
 }
 
 func (r *patientRepository) FindAll(offset, limit int) ([]models.Patient, int64, error) {
-	ctx := context.Background()
 	var patients []models.Patient
 	var total int64
 
-	// total omitted for NoSQL
-
-	iter := r.db.Collection("patients").Where("DeletedAt", "==", nil).Offset(offset).Limit(limit).Documents(ctx)
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, 0, err
-		}
-		var patient models.Patient
-		doc.DataTo(&patient)
-		patient.ID = doc.Ref.ID
-		patients = append(patients, patient)
+	err := r.db.Model(&models.Patient{}).Count(&total).Error
+	if err != nil {
+		return nil, 0, err
 	}
 
-	return patients, total, nil
+	err = r.db.Preload("Category").Preload("GenderData").Offset(offset).Limit(limit).Find(&patients).Error
+	return patients, total, err
 }
 
 func (r *patientRepository) FindByID(id string) (*models.Patient, error) {
-	ctx := context.Background()
-	doc, err := r.db.Collection("patients").Doc(id).Get(ctx)
+	var patient models.Patient
+	err := r.db.Preload("Category").Preload("GenderData").First(&patient, id).Error
 	if err != nil {
 		return nil, err
 	}
-	var patient models.Patient
-	doc.DataTo(&patient)
-	patient.ID = doc.Ref.ID
 	return &patient, nil
 }
 
 func (r *patientRepository) Create(patient *models.Patient) error {
-	ctx := context.Background()
-	ref := r.db.Collection("patients").NewDoc()
-	patient.ID = ref.ID
-	_, err := ref.Set(ctx, patient)
-	return err
+	return r.db.Create(patient).Error
 }
 
 func (r *patientRepository) Update(patient *models.Patient) error {
-	ctx := context.Background()
-	_, err := r.db.Collection("patients").Doc(patient.ID).Set(ctx, patient)
-	return err
+	return r.db.Save(patient).Error
 }
 
 func (r *patientRepository) Delete(id string) error {
-	ctx := context.Background()
-	now := time.Now()
-	_, err := r.db.Collection("patients").Doc(id).Update(ctx, []firestore.Update{
-		{Path: "DeletedAt", Value: &now},
-	})
-	return err
+	return r.db.Delete(&models.Patient{}, id).Error
 }
 
 func (r *patientRepository) Restore(id string) error {
-	ctx := context.Background()
-	_, err := r.db.Collection("patients").Doc(id).Update(ctx, []firestore.Update{
-		{Path: "DeletedAt", Value: nil},
-	})
-	return err
+	return r.db.Unscoped().Model(&models.Patient{}).Where("id = ?", id).Update("deleted_at", nil).Error
 }
-

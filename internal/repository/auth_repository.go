@@ -1,11 +1,8 @@
 package repository
 
 import (
-	"context"
 	"backend_go/internal/models"
-
-	"cloud.google.com/go/firestore"
-	"google.golang.org/api/iterator"
+	"gorm.io/gorm"
 )
 
 type AuthRepository interface {
@@ -16,52 +13,30 @@ type AuthRepository interface {
 }
 
 type authRepository struct {
-	db *firestore.Client
+	db *gorm.DB
 }
 
-func NewAuthRepository(db *firestore.Client) AuthRepository {
+func NewAuthRepository(db *gorm.DB) AuthRepository {
 	return &authRepository{db}
 }
 
-func (r *authRepository) CreateBlocklist(blocklist *models.JwtBlocklist) error {
-	ctx := context.Background()
-	_, err := r.db.Collection("jwt_blocklists").Doc(blocklist.Token).Set(ctx, blocklist)
-	return err
-}
-
 func (r *authRepository) CreateResetToken(token *models.PasswordResetToken) error {
-	ctx := context.Background()
-	_, err := r.db.Collection("password_reset_tokens").NewDoc().Set(ctx, token)
-	return err
+	return r.db.Create(token).Error
 }
 
 func (r *authRepository) GetResetToken(email, token string) (*models.PasswordResetToken, error) {
-	ctx := context.Background()
-	iter := r.db.Collection("password_reset_tokens").Where("Email", "==", email).Where("Token", "==", token).Limit(1).Documents(ctx)
-	doc, err := iter.Next()
-	if err == iterator.Done {
-		return nil, nil
-	}
+	var resetToken models.PasswordResetToken
+	err := r.db.Where("email = ? AND token = ?", email, token).First(&resetToken).Error
 	if err != nil {
 		return nil, err
 	}
-	var res models.PasswordResetToken
-	doc.DataTo(&res)
-	return &res, nil
+	return &resetToken, nil
 }
 
 func (r *authRepository) DeleteResetToken(email string) error {
-	ctx := context.Background()
-	iter := r.db.Collection("password_reset_tokens").Where("Email", "==", email).Documents(ctx)
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		doc.Ref.Delete(ctx)
-	}
-	return nil
+	return r.db.Where("email = ?", email).Delete(&models.PasswordResetToken{}).Error
+}
+
+func (r *authRepository) CreateBlocklist(blocklist *models.JwtBlocklist) error {
+	return r.db.Create(blocklist).Error
 }

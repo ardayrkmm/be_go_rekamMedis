@@ -1,11 +1,10 @@
 package repository
 
 import (
-	"context"
 	"time"
 
-	"cloud.google.com/go/firestore"
-	"google.golang.org/api/iterator"
+	"backend_go/internal/models"
+	"gorm.io/gorm"
 )
 
 type DashboardRepository interface {
@@ -23,293 +22,169 @@ type DashboardRepository interface {
 }
 
 type dashboardRepository struct {
-	db *firestore.Client
+	db *gorm.DB
 }
 
-func NewDashboardRepository(db *firestore.Client) DashboardRepository {
+func NewDashboardRepository(db *gorm.DB) DashboardRepository {
 	return &dashboardRepository{db}
 }
 
-func (r *dashboardRepository) countDocs(iter *firestore.DocumentIterator) (int, error) {
-	count := 0
-	for {
-		_, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return 0, err
-		}
-		count++
-	}
-	return count, nil
-}
-
 func (r *dashboardRepository) CountPatients() (int, error) {
-	ctx := context.Background()
-	iter := r.db.Collection("patients").Where("DeletedAt", "==", nil).Documents(ctx)
-	return r.countDocs(iter)
+	var count int64
+	err := r.db.Model(&models.Patient{}).Count(&count).Error
+	return int(count), err
 }
 
 func (r *dashboardRepository) CountPhysiotherapists() (int, error) {
-	ctx := context.Background()
-	iter := r.db.Collection("physiotherapists").Where("DeletedAt", "==", nil).Documents(ctx)
-	return r.countDocs(iter)
+	var count int64
+	err := r.db.Model(&models.Physiotherapist{}).Count(&count).Error
+	return int(count), err
 }
 
 func (r *dashboardRepository) CountAppointments() (int, error) {
-	ctx := context.Background()
-	iter := r.db.Collection("appointments").Where("DeletedAt", "==", nil).Documents(ctx)
-	return r.countDocs(iter)
+	var count int64
+	err := r.db.Model(&models.Appointment{}).Count(&count).Error
+	return int(count), err
 }
 
 func (r *dashboardRepository) CountAppointmentsToday() (int, error) {
-	ctx := context.Background()
+	var count int64
+	// In GORM, if AppointmentDate is time.Time, it's easier to query by range.
+	// We'll just do a basic string query if it's a string, or range if time.
+	// Since AppointmentDate is time.Time, we should compare dates.
 	todayStr := time.Now().Format("2006-01-02")
-	iter := r.db.Collection("appointments").Where("AppointmentDate", "==", todayStr).Where("DeletedAt", "==", nil).Documents(ctx)
-	return r.countDocs(iter)
+	err := r.db.Model(&models.Appointment{}).Where("DATE(appointment_date) = ?", todayStr).Count(&count).Error
+	return int(count), err
 }
 
 func (r *dashboardRepository) CountNewPatientsThisMonth() (int, error) {
-	// For simplicity, just return 0 or do a simple query if CreatedAt exists
-	// We will just return 0 for now as it's complex without proper dates in dummy data
 	return 0, nil
 }
 
 func (r *dashboardRepository) SumRevenueToday() (int, error) {
-	ctx := context.Background()
+	var total float64
 	todayStr := time.Now().Format("2006-01-02")
-	
-	// We need to parse PaymentDate string since we store it as string or timestamp
-	iter := r.db.Collection("payments").Where("Status", "==", "paid").Documents(ctx)
-	
-	sum := 0.0
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return 0, err
-		}
-		
-		data := doc.Data()
-		
-		// Simplistic filtering by prefix of string if it's ISO8601
-		if dateStr, ok := data["PaymentDate"].(string); ok {
-			if len(dateStr) >= 10 && dateStr[:10] == todayStr {
-				if total, ok := data["Total"].(float64); ok {
-					sum += total
-				}
-			}
-		} else if dateTime, ok := data["PaymentDate"].(time.Time); ok {
-			if dateTime.Format("2006-01-02") == todayStr {
-				if total, ok := data["Total"].(float64); ok {
-					sum += total
-				}
-			}
-		}
-	}
-	return int(sum), nil
+	err := r.db.Model(&models.Payment{}).Where("status = ? AND DATE(payment_date) = ?", "paid", todayStr).Select("IFNULL(SUM(total), 0)").Scan(&total).Error
+	return int(total), err
 }
 
 func (r *dashboardRepository) SumRevenueThisMonth() (int, error) {
-	ctx := context.Background()
+	var total float64
 	monthStr := time.Now().Format("2006-01")
-	
-	iter := r.db.Collection("payments").Where("Status", "==", "paid").Documents(ctx)
-	
-	sum := 0.0
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return 0, err
-		}
-		
-		data := doc.Data()
-		
-		if dateStr, ok := data["PaymentDate"].(string); ok {
-			if len(dateStr) >= 7 && dateStr[:7] == monthStr {
-				if total, ok := data["Total"].(float64); ok {
-					sum += total
-				}
-			}
-		} else if dateTime, ok := data["PaymentDate"].(time.Time); ok {
-			if dateTime.Format("2006-01") == monthStr {
-				if total, ok := data["Total"].(float64); ok {
-					sum += total
-				}
-			}
-		}
-	}
-	return int(sum), nil
+	err := r.db.Model(&models.Payment{}).Where("status = ? AND DATE_FORMAT(payment_date, '%Y-%m') = ?", "paid", monthStr).Select("IFNULL(SUM(total), 0)").Scan(&total).Error
+	return int(total), err
 }
 
 func (r *dashboardRepository) CountTherapySessions() (int, error) {
-	ctx := context.Background()
-	iter := r.db.Collection("therapy_sessions").Where("DeletedAt", "==", nil).Documents(ctx)
-	return r.countDocs(iter)
+	var count int64
+	err := r.db.Model(&models.TherapySession{}).Count(&count).Error
+	return int(count), err
 }
 
 func (r *dashboardRepository) CountAppointmentsByStatus() ([]map[string]interface{}, error) {
-	ctx := context.Background()
-	iter := r.db.Collection("appointments").Where("DeletedAt", "==", nil).Documents(ctx)
-	
-	statusCounts := map[string]int{
+	type Result struct {
+		Status string
+		Count  int
+	}
+	var results []Result
+	err := r.db.Model(&models.Appointment{}).Select("status, COUNT(id) as count").Group("status").Scan(&results).Error
+	if err != nil {
+		return nil, err
+	}
+
+	statusMap := map[string]int{
 		"pending":   0,
 		"confirmed": 0,
 		"completed": 0,
 		"cancelled": 0,
 	}
-
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		data := doc.Data()
-		if status, ok := data["Status"].(string); ok {
-			if _, exists := statusCounts[status]; exists {
-				statusCounts[status]++
-			} else {
-				statusCounts[status] = 1
-			}
-		}
+	for _, res := range results {
+		statusMap[res.Status] = res.Count
 	}
 
-	var result []map[string]interface{}
-	// ensure order
-	keys := []string{"pending", "confirmed", "completed", "cancelled"}
-	for _, status := range keys {
-		result = append(result, map[string]interface{}{
-			"status": status,
-			"count":  statusCounts[status],
+	var finalResult []map[string]interface{}
+	for _, k := range []string{"pending", "confirmed", "completed", "cancelled"} {
+		finalResult = append(finalResult, map[string]interface{}{
+			"status": k,
+			"count":  statusMap[k],
 		})
 	}
-
-	return result, nil
+	return finalResult, nil
 }
 
 func (r *dashboardRepository) CountTherapySessionsByMonth() ([]map[string]interface{}, error) {
-	ctx := context.Background()
-	
-	// get date 6 months ago
+	type Result struct {
+		Month string
+		Count int
+	}
+	var results []Result
 	sixMonthsAgo := time.Now().AddDate(0, -5, 0)
 	startOfMonth := time.Date(sixMonthsAgo.Year(), sixMonthsAgo.Month(), 1, 0, 0, 0, 0, sixMonthsAgo.Location())
-	startDateStr := startOfMonth.Format("2006-01-02")
 
-	// Filter from 6 months ago
-	iter := r.db.Collection("therapy_sessions").
-		Where("DeletedAt", "==", nil).
-		Where("TherapyDate", ">=", startDateStr).
-		Documents(ctx)
+	err := r.db.Model(&models.TherapySession{}).
+		Select("DATE_FORMAT(therapy_date, '%Y-%m') as month, COUNT(id) as count").
+		Where("therapy_date >= ?", startOfMonth).
+		Group("month").Scan(&results).Error
 
-	monthCounts := make(map[string]int)
-
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		data := doc.Data()
-		
-		var sessionDate time.Time
-		if dateStr, ok := data["TherapyDate"].(string); ok {
-			parsed, err := time.Parse("2006-01-02", dateStr[:10])
-			if err == nil {
-				sessionDate = parsed
-			}
-		} else if dateTime, ok := data["TherapyDate"].(time.Time); ok {
-			sessionDate = dateTime
-		}
-
-		if !sessionDate.IsZero() {
-			monthStr := sessionDate.Format("2006-01")
-			monthCounts[monthStr]++
-		}
+	if err != nil {
+		return nil, err
 	}
 
-	var result []map[string]interface{}
-	// Generate the last 6 months specifically to ensure order and presence even if 0
+	monthCounts := make(map[string]int)
+	for _, res := range results {
+		monthCounts[res.Month] = res.Count
+	}
+
+	var finalResult []map[string]interface{}
 	for i := 5; i >= 0; i-- {
 		m := time.Now().AddDate(0, -i, 0).Format("2006-01")
-		result = append(result, map[string]interface{}{
+		finalResult = append(finalResult, map[string]interface{}{
 			"month": m,
 			"count": monthCounts[m],
 		})
 	}
 
-	return result, nil
+	return finalResult, nil
 }
 
 func (r *dashboardRepository) CountPatientsByMonth() ([]map[string]interface{}, error) {
-	ctx := context.Background()
-	
-	// get date 6 months ago
+	type Result struct {
+		Month string
+		Count int
+	}
+	var results []Result
 	sixMonthsAgo := time.Now().AddDate(0, -5, 0)
 	startOfMonth := time.Date(sixMonthsAgo.Year(), sixMonthsAgo.Month(), 1, 0, 0, 0, 0, sixMonthsAgo.Location())
-	startDateStr := startOfMonth.Format("2006-01-02")
 
-	iter := r.db.Collection("patients").
-		Where("DeletedAt", "==", nil).
-		Where("created_at", ">=", startDateStr). 
-		Documents(ctx)
+	err := r.db.Model(&models.Patient{}).
+		Select("DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(id) as count").
+		Where("created_at >= ?", startOfMonth).
+		Group("month").Scan(&results).Error
 
-	monthCounts := make(map[string]int)
-
-	for {
-		doc, err := iter.Next()
-		if err != nil {
-			break
-		}
-		data := doc.Data()
-		
-		var createdAtStr string
-		if t, ok := data["created_at"].(string); ok {
-			createdAtStr = t
-		}
-
-		if createdAtStr != "" {
-			if parsedTime, err := time.Parse(time.RFC3339, createdAtStr); err == nil {
-				monthStr := parsedTime.Format("Jan")
-				monthCounts[monthStr]++
-			} else if parsedTime, err := time.Parse("2006-01-02T15:04:05Z07:00", createdAtStr); err == nil {
-				monthStr := parsedTime.Format("Jan")
-				monthCounts[monthStr]++
-			}
-		} else {
-		    // fallback check time.Time
-			if t, ok := data["created_at"].(time.Time); ok {
-			    monthStr := t.Format("Jan")
-				monthCounts[monthStr]++
-			}
-		}
+	if err != nil {
+		return nil, err
 	}
 
-	var result []map[string]interface{}
+	monthCounts := make(map[string]int)
 	monthsMap := map[string]string{
 		"01": "Jan", "02": "Feb", "03": "Mar", "04": "Apr", "05": "May", "06": "Jun",
 		"07": "Jul", "08": "Aug", "09": "Sep", "10": "Oct", "11": "Nov", "12": "Dec",
 	}
-	
+
+	for _, res := range results {
+		monthCounts[res.Month] = res.Count
+	}
+
+	var finalResult []map[string]interface{}
 	for i := 5; i >= 0; i-- {
 		targetTime := time.Now().AddDate(0, -i, 0)
+		mStr := targetTime.Format("2006-01")
 		monthNum := targetTime.Format("01")
-		m := monthsMap[monthNum]
-		result = append(result, map[string]interface{}{
-			"month": m,
-			"total": monthCounts[m],
+		finalResult = append(finalResult, map[string]interface{}{
+			"month": monthsMap[monthNum],
+			"total": monthCounts[mStr],
 		})
 	}
 
-	return result, nil
+	return finalResult, nil
 }

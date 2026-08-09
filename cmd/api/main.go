@@ -7,6 +7,7 @@ import (
 	_ "backend_go/docs"
 	"backend_go/internal/delivery/http"
 	"backend_go/internal/middleware"
+	"backend_go/internal/models"
 	"backend_go/internal/repository"
 	"backend_go/internal/usecase"
 	"backend_go/pkg/logger"
@@ -48,7 +49,11 @@ func main() {
 	// Connect to database
 	db := utils.ConnectDB()
 
-
+	// Auto migrate models
+	logger.Log.Info("Running AutoMigrate...")
+	if err := models.AutoMigrate(db); err != nil {
+		logger.Log.Fatalf("Failed to migrate database: %v", err)
+	}
 
 	// Setup Gin router
 	r := gin.Default()
