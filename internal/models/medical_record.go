@@ -26,7 +26,7 @@ type MedicalRecord struct {
 	// Relasi — tidak buat FK constraint di DB
 	Patient *Patient `json:"patient,omitempty" gorm:"foreignKey:PatientID;constraint:-"`
 	Physiotherapist *Physiotherapist `json:"physiotherapist,omitempty" gorm:"foreignKey:PhysiotherapistID;constraint:-"`
-	Service *ServiceMaster `json:"service,omitempty" gorm:"foreignKey:ServiceMasterID;constraint:-"`
+	Service *ServiceMaster `json:"service,omitempty" gorm:"foreignKey:ServiceID;constraint:-"`
 }
 
 func (m *MedicalRecord) BeforeCreate(tx *gorm.DB) (err error) {
