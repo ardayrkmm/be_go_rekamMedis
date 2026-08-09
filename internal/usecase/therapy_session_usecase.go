@@ -143,15 +143,33 @@ func (u *therapySessionUseCase) Update(id string, req *models.TherapySession) er
 		}
 	}
 
-	session.AppointmentID = req.AppointmentID
-	session.PatientID = req.PatientID
-	session.PhysiotherapistID = req.PhysiotherapistID
-	session.ServiceMasterID = req.ServiceMasterID
-	session.TherapyDate = req.TherapyDate
-	session.Notes = req.Notes
-	session.Status = req.Status
-	session.Complaint = req.Complaint
-	session.TreatmentGiven = req.TreatmentGiven
+	if req.AppointmentID != "" {
+		session.AppointmentID = req.AppointmentID
+	}
+	if req.PatientID != "" {
+		session.PatientID = req.PatientID
+	}
+	if req.PhysiotherapistID != "" {
+		session.PhysiotherapistID = req.PhysiotherapistID
+	}
+	if req.ServiceMasterID != "" {
+		session.ServiceMasterID = req.ServiceMasterID
+	}
+	if req.TherapyDate != nil {
+		session.TherapyDate = req.TherapyDate
+	}
+	if req.Notes != "" {
+		session.Notes = req.Notes
+	}
+	if req.Status != "" {
+		session.Status = req.Status
+	}
+	if req.Complaint != "" {
+		session.Complaint = req.Complaint
+	}
+	if req.TreatmentGiven != "" {
+		session.TreatmentGiven = req.TreatmentGiven
+	}
 
 	return u.sessionRepo.Update(session)
 }

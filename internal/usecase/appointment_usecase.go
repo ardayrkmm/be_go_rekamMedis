@@ -126,11 +126,21 @@ func (u *appointmentUseCase) Update(id string, req *models.Appointment) error {
 		return err
 	}
 
-	appointment.PatientID = req.PatientID
-	appointment.PhysiotherapistID = req.PhysiotherapistID
-	appointment.AppointmentDate = req.AppointmentDate
-	appointment.Status = req.Status
-	appointment.Notes = req.Notes
+	if req.PatientID != "" {
+		appointment.PatientID = req.PatientID
+	}
+	if req.PhysiotherapistID != "" {
+		appointment.PhysiotherapistID = req.PhysiotherapistID
+	}
+	if req.AppointmentDate != nil {
+		appointment.AppointmentDate = req.AppointmentDate
+	}
+	if req.Status != "" {
+		appointment.Status = req.Status
+	}
+	if req.Notes != "" {
+		appointment.Notes = req.Notes
+	}
 
 	return u.appointmentRepo.Update(appointment)
 }
