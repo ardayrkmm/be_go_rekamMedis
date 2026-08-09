@@ -32,7 +32,7 @@ func (r *activityLogRepository) FindAll(offset, limit int) ([]models.ActivityLog
 
 func (r *activityLogRepository) FindByID(id string) (*models.ActivityLog, error) {
 	var log models.ActivityLog
-	err := r.db.Preload("User").First(&log, id).Error
+	err := r.db.Preload("User").First(&log, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}

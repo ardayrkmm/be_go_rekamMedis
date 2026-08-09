@@ -43,7 +43,7 @@ func (r *notificationRepository) FindUnread() ([]models.Notification, error) {
 
 func (r *notificationRepository) FindByID(id string) (*models.Notification, error) {
 	var notification models.Notification
-	err := r.db.First(&notification, id).Error
+	err := r.db.First(&notification, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}

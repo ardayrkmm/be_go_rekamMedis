@@ -34,7 +34,7 @@ func (r *exerciseProgramRepository) FindAll(offset, limit int) ([]models.Exercis
 
 func (r *exerciseProgramRepository) FindByID(id string) (*models.ExerciseProgram, error) {
 	var program models.ExerciseProgram
-	err := r.db.Preload("TherapySession").First(&program, id).Error
+	err := r.db.Preload("TherapySession").First(&program, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}

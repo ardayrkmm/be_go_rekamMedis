@@ -37,7 +37,7 @@ func (r *medicalRecordRepository) FindAll(offset, limit int) ([]models.MedicalRe
 
 func (r *medicalRecordRepository) FindByID(id string) (*models.MedicalRecord, error) {
 	var record models.MedicalRecord
-	err := r.db.Preload("Patient").Preload("Physiotherapist").Preload("Service").First(&record, id).Error
+	err := r.db.Preload("Patient").Preload("Physiotherapist").Preload("Service").First(&record, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}

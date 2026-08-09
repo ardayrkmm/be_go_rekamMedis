@@ -39,7 +39,7 @@ func (r *therapySessionRepository) FindAll(offset, limit int) ([]models.TherapyS
 
 func (r *therapySessionRepository) FindByID(id string) (*models.TherapySession, error) {
 	var session models.TherapySession
-	err := r.db.Preload("Appointment").Preload("Physiotherapist").Preload("Patient").Preload("ServiceMaster").First(&session, id).Error
+	err := r.db.Preload("Appointment").Preload("Physiotherapist").Preload("Patient").Preload("ServiceMaster").First(&session, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}

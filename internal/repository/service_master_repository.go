@@ -36,7 +36,7 @@ func (r *serviceMasterRepository) FindAll(offset, limit int) ([]models.ServiceMa
 
 func (r *serviceMasterRepository) FindByID(id string) (*models.ServiceMaster, error) {
 	var service models.ServiceMaster
-	err := r.db.First(&service, id).Error
+	err := r.db.First(&service, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}

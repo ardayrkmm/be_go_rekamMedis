@@ -37,7 +37,7 @@ func (r *physiotherapistRepository) FindAll(offset, limit int) ([]models.Physiot
 
 func (r *physiotherapistRepository) FindByID(id string) (*models.Physiotherapist, error) {
 	var physio models.Physiotherapist
-	err := r.db.First(&physio, id).Error
+	err := r.db.First(&physio, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}

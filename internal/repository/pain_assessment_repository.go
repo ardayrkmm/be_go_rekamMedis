@@ -34,7 +34,7 @@ func (r *painAssessmentRepository) FindAll(offset, limit int) ([]models.PainAsse
 
 func (r *painAssessmentRepository) FindByID(id string) (*models.PainAssessment, error) {
 	var assessment models.PainAssessment
-	err := r.db.Preload("TherapySession").First(&assessment, id).Error
+	err := r.db.Preload("TherapySession").First(&assessment, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}

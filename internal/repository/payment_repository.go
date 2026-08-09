@@ -49,7 +49,7 @@ func (r *paymentRepository) FindAll(offset, limit int, search, status, startDate
 
 func (r *paymentRepository) FindByID(id string) (*models.Payment, error) {
 	var payment models.Payment
-	err := r.db.Preload("Appointment").Preload("Patient").Preload("PaymentDetails").First(&payment, id).Error
+	err := r.db.Preload("Appointment").Preload("Patient").Preload("PaymentDetails").First(&payment, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
