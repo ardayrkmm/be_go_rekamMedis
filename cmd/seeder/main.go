@@ -25,7 +25,7 @@ func main() {
 		"activity_logs", "notifications", "payment_details", "payments",
 		"exercise_programs", "pain_assessments", "therapy_sessions",
 		"medical_records", "appointments", "patients", "physiotherapists",
-		"service_masters", "patient_categories", "users",
+		"service_masters", "users", "genders", "patient_categories",
 	}
 	db.Exec("SET FOREIGN_KEY_CHECKS=0")
 	for _, t := range tables {
@@ -52,6 +52,24 @@ func main() {
 
 	if err := db.Create(&admin).Error; err != nil {
 		log.Fatalf("Gagal membuat akun admin: %v", err)
+	}
+
+	// Insert Genders
+	genders := []models.Gender{
+		{ID: uuid.New().String(), Name: "Laki-laki"},
+		{ID: uuid.New().String(), Name: "Perempuan"},
+	}
+	for _, g := range genders {
+		db.Create(&g)
+	}
+
+	// Insert Patient Categories
+	categories := []models.PatientCategory{
+		{ID: uuid.New().String(), Name: "Umum"},
+		{ID: uuid.New().String(), Name: "Member"},
+	}
+	for _, c := range categories {
+		db.Create(&c)
 	}
 
 	log.Println("=================================")
