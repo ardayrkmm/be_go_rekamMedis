@@ -1,4 +1,4 @@
-package models
+﻿package models
 
 import (
 	"github.com/google/uuid"
@@ -10,7 +10,7 @@ import (
 type Patient struct {
 	ID                    string     `firestore:"id,omitempty" json:"id" gorm:"type:varchar(36);primaryKey"`
 	MedicalRecordNumber   string     `json:"medical_record_number" gorm:"uniqueIndex;type:varchar(255)"`
-	Nik                   string     `json:"nik" gorm:"uniqueIndex;type:varchar(255)"`
+	Nik                   *string     `json:"nik" gorm:"uniqueIndex;type:varchar(255)"`
 	Name                  string     `json:"name" gorm:"type:varchar(255)"`
 	BirthDate             *time.Time `json:"birth_date"`
 	PatientCategoryID     string     `json:"patient_category_id" gorm:"type:varchar(36);index"`
@@ -18,7 +18,7 @@ type Patient struct {
 	BloodType             string     `json:"blood_type"`
 	Address               string     `json:"address"`
 	Phone                 string     `json:"phone"`
-	Email                 string     `json:"email" gorm:"uniqueIndex;type:varchar(255)"`
+	Email                 *string     `json:"email" gorm:"uniqueIndex;type:varchar(255)"`
 	Occupation            string     `json:"occupation"`
 	MaritalStatus         string     `json:"marital_status"`
 	EmergencyContactName  string     `json:"emergency_contact_name"`
@@ -40,5 +40,15 @@ func (m *Patient) BeforeCreate(tx *gorm.DB) (err error) {
 	if m.ID == "" {
 		m.ID = uuid.New().String()
 	}
+	if m.Nik != nil && *m.Nik == "" { m.Nik = nil }
+	if m.Email != nil && *m.Email == "" { m.Email = nil }
+	return
+}
+
+
+
+func (m *Patient) BeforeUpdate(tx *gorm.DB) (err error) {
+	if m.Nik != nil && *m.Nik == "" { m.Nik = nil }
+	if m.Email != nil && *m.Email == "" { m.Email = nil }
 	return
 }
