@@ -47,6 +47,14 @@ func (u *therapySessionUseCase) GetByAppointmentID(appointmentID string) ([]mode
 }
 
 func (u *therapySessionUseCase) Store(session *models.TherapySession) error {
+	// Check if a session already exists for this appointment
+	if session.AppointmentID != "" {
+		existing, err := u.sessionRepo.FindByAppointmentID(session.AppointmentID)
+		if err == nil && len(existing) > 0 {
+			return errors.New("Sesi terapi untuk janji ini sudah ada")
+		}
+	}
+
 	err := u.sessionRepo.Create(session)
 	if err != nil {
 		return err

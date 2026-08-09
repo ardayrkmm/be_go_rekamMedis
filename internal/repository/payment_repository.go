@@ -44,13 +44,13 @@ func (r *paymentRepository) FindAll(offset, limit int, search, status, startDate
 		return nil, 0, err
 	}
 
-	err = query.Preload("Appointment").Preload("Patient").Preload("PaymentDetails").Offset(offset).Limit(limit).Find(&payments).Error
+	err = query.Preload("Appointment").Preload("Patient").Preload("PaymentDetails.ServiceMaster").Offset(offset).Limit(limit).Find(&payments).Error
 	return payments, total, err
 }
 
 func (r *paymentRepository) FindByID(id string) (*models.Payment, error) {
 	var payment models.Payment
-	err := r.db.Preload("Appointment").Preload("Patient").Preload("PaymentDetails").First(&payment, "id = ?", id).Error
+	err := r.db.Preload("Appointment").Preload("Patient").Preload("PaymentDetails.ServiceMaster").First(&payment, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
