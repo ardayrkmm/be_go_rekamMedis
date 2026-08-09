@@ -146,7 +146,8 @@ func (h *TherapySessionHandler) Update(c *gin.Context) {
 		return
 	}
 
-	utils.SuccessResponse(c, http.StatusOK, "Therapy Session updated successfully", nil)
+	updated, _ := h.sessionUC.GetByID(id)
+	utils.SuccessResponse(c, http.StatusOK, "Therapy Session updated successfully", updated)
 }
 
 func (h *TherapySessionHandler) Delete(c *gin.Context) {

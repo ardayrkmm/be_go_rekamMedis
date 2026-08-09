@@ -127,7 +127,8 @@ func (h *AppointmentHandler) Update(c *gin.Context) {
 		return
 	}
 
-	utils.SuccessResponse(c, http.StatusOK, "Appointment updated successfully", nil)
+	updated, _ := h.appointmentUC.GetByID(id)
+	utils.SuccessResponse(c, http.StatusOK, "Appointment updated successfully", updated)
 }
 
 func (h *AppointmentHandler) Delete(c *gin.Context) {
