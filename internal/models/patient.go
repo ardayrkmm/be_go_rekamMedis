@@ -30,8 +30,8 @@ type Patient struct {
 	DeletedAt             *time.Time `json:"-" firestore:"DeletedAt"`
 
 	// Relasi
-	Category       *PatientCategory `json:"category,omitempty" gorm:"foreignKey:PatientCategoryID"`
-	GenderData     *Gender          `json:"gender_data,omitempty" gorm:"foreignKey:GenderID"`
+	Category       *PatientCategory `json:"category,omitempty" gorm:"foreignKey:PatientCategoryID;constraint:-"`
+	GenderData     *Gender          `json:"gender_data,omitempty" gorm:"foreignKey:GenderID;constraint:-"`
 	Appointments []Appointment `json:"appointments,omitempty" gorm:"foreignKey:PatientID;constraint:-"`
 	MedicalRecords []MedicalRecord `json:"medical_records,omitempty" gorm:"foreignKey:PatientID;constraint:-"`
 }

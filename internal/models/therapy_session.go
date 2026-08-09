@@ -27,7 +27,7 @@ type TherapySession struct {
 	Appointment *Appointment `json:"appointment,omitempty" gorm:"foreignKey:AppointmentID;constraint:-"`
 	Patient *Patient `json:"patient,omitempty" gorm:"foreignKey:PatientID;constraint:-"`
 	Physiotherapist *Physiotherapist `json:"physiotherapist,omitempty" gorm:"foreignKey:PhysiotherapistID;constraint:-"`
-	ServiceMaster *ServiceMaster `json:"service_master,omitempty" gorm:"foreignKey:ServiceID;constraint:-"`
+	ServiceMaster *ServiceMaster `json:"service_master,omitempty" gorm:"foreignKey:ServiceMasterID;constraint:-"`
 	ServiceMasters  []ServiceMaster  `json:"service_masters,omitempty" gorm:"-"`
 }
 

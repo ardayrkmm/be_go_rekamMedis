@@ -23,10 +23,10 @@ type Appointment struct {
 	DeletedAt         *time.Time `json:"-" firestore:"DeletedAt"`
 
 	// Relasi — tidak buat FK constraint di DB
-	Patient         *Patient         `json:"patient,omitempty" gorm:"foreignKey:PatientID"`
-	Physiotherapist *Physiotherapist `json:"physiotherapist,omitempty" gorm:"foreignKey:PhysiotherapistID"`
-	ServiceMaster   *ServiceMaster   `json:"service_master,omitempty" gorm:"foreignKey:ServiceID"`
-	TherapySession  *TherapySession  `json:"therapy_session,omitempty" gorm:"foreignKey:AppointmentID"`
+	Patient         *Patient         `json:"patient,omitempty" gorm:"foreignKey:PatientID;constraint:-"`
+	Physiotherapist *Physiotherapist `json:"physiotherapist,omitempty" gorm:"foreignKey:PhysiotherapistID;constraint:-"`
+	ServiceMaster   *ServiceMaster   `json:"service_master,omitempty" gorm:"foreignKey:ServiceMasterID;constraint:-"`
+	TherapySession  *TherapySession  `json:"therapy_session,omitempty" gorm:"foreignKey:AppointmentID;constraint:-"`
 }
 
 func (m *Appointment) BeforeCreate(tx *gorm.DB) (err error) {
