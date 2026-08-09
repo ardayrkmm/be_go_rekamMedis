@@ -33,13 +33,13 @@ func (r *therapySessionRepository) FindAll(offset, limit int) ([]models.TherapyS
 		return nil, 0, err
 	}
 
-	err = r.db.Preload("Appointment").Preload("Physiotherapist").Preload("Patient").Offset(offset).Limit(limit).Find(&sessions).Error
+	err = r.db.Preload("Appointment").Preload("Physiotherapist").Preload("Patient").Preload("ServiceMaster").Offset(offset).Limit(limit).Find(&sessions).Error
 	return sessions, total, err
 }
 
 func (r *therapySessionRepository) FindByID(id string) (*models.TherapySession, error) {
 	var session models.TherapySession
-	err := r.db.Preload("Appointment").Preload("Physiotherapist").Preload("Patient").First(&session, id).Error
+	err := r.db.Preload("Appointment").Preload("Physiotherapist").Preload("Patient").Preload("ServiceMaster").First(&session, id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func (r *therapySessionRepository) FindByID(id string) (*models.TherapySession, 
 
 func (r *therapySessionRepository) FindByAppointmentID(appointmentID string) ([]models.TherapySession, error) {
 	var sessions []models.TherapySession
-	err := r.db.Where("appointment_id = ?", appointmentID).Preload("Physiotherapist").Find(&sessions).Error
+	err := r.db.Where("appointment_id = ?", appointmentID).Preload("Physiotherapist").Preload("ServiceMaster").Find(&sessions).Error
 	return sessions, err
 }
 
@@ -66,7 +66,7 @@ func (r *therapySessionRepository) Delete(id string) error {
 
 func (r *therapySessionRepository) GetWeeklySchedule(startDate, endDate string) ([]models.TherapySession, error) {
 	var sessions []models.TherapySession
-	err := r.db.Where("therapy_date >= ? AND therapy_date <= ?", startDate, endDate).Preload("Appointment").Preload("Patient").Preload("Physiotherapist").Find(&sessions).Error
+	err := r.db.Where("therapy_date >= ? AND therapy_date <= ?", startDate, endDate).Preload("Appointment").Preload("Patient").Preload("Physiotherapist").Preload("ServiceMaster").Find(&sessions).Error
 	return sessions, err
 }
 

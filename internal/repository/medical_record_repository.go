@@ -31,13 +31,13 @@ func (r *medicalRecordRepository) FindAll(offset, limit int) ([]models.MedicalRe
 		return nil, 0, err
 	}
 
-	err = r.db.Preload("Patient").Preload("Physiotherapist").Offset(offset).Limit(limit).Find(&records).Error
+	err = r.db.Preload("Patient").Preload("Physiotherapist").Preload("Service").Offset(offset).Limit(limit).Find(&records).Error
 	return records, total, err
 }
 
 func (r *medicalRecordRepository) FindByID(id string) (*models.MedicalRecord, error) {
 	var record models.MedicalRecord
-	err := r.db.Preload("Patient").Preload("Physiotherapist").First(&record, id).Error
+	err := r.db.Preload("Patient").Preload("Physiotherapist").Preload("Service").First(&record, id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (r *medicalRecordRepository) FindByID(id string) (*models.MedicalRecord, er
 
 func (r *medicalRecordRepository) FindByPatientID(patientID string) ([]models.MedicalRecord, error) {
 	var records []models.MedicalRecord
-	err := r.db.Where("patient_id = ?", patientID).Preload("Physiotherapist").Find(&records).Error
+	err := r.db.Where("patient_id = ?", patientID).Preload("Physiotherapist").Preload("Service").Find(&records).Error
 	return records, err
 }
 
