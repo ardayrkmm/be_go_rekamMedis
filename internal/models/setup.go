@@ -1,4 +1,4 @@
-package models
+﻿package models
 
 import (
 	"gorm.io/gorm"
@@ -11,6 +11,8 @@ func AutoMigrate(db *gorm.DB) error {
 
 	return db.AutoMigrate(
 		&User{},
+		&JwtBlocklist{},
+		&PasswordResetToken{},
 		&Gender{},
 		&ServiceCategory{},
 		&ServiceMaster{},
@@ -28,3 +30,4 @@ func AutoMigrate(db *gorm.DB) error {
 		&ExerciseProgram{},
 	)
 }
+
