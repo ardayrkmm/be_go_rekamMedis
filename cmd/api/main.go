@@ -98,7 +98,7 @@ func main() {
 	categoryUC := usecase.NewServiceCategoryUseCase(categoryRepo)
 	recordUC := usecase.NewMedicalRecordUseCase(recordRepo, patientRepo, physioRepo, serviceRepo, appointmentRepo)
 	appointmentUC := usecase.NewAppointmentUseCase(appointmentRepo, paymentRepo, serviceRepo)
-	sessionUC := usecase.NewTherapySessionUseCase(sessionRepo, paymentRepo, serviceRepo, recordRepo)
+	sessionUC := usecase.NewTherapySessionUseCase(sessionRepo, paymentRepo, serviceRepo, recordRepo, appointmentRepo)
 	paymentUC := usecase.NewPaymentUseCase(paymentRepo, patientRepo, physioRepo)
 	notificationUC := usecase.NewNotificationUseCase(notificationRepo)
 	activityLogUC := usecase.NewActivityLogUseCase(activityLogRepo)

@@ -6,7 +6,7 @@ import (
 )
 
 type TherapySessionRepository interface {
-	FindAll(offset, limit int) ([]models.TherapySession, int64, error)
+	FindAll(offset, limit int, patientID string) ([]models.TherapySession, int64, error)
 	FindByID(id string) (*models.TherapySession, error)
 	FindByAppointmentID(appointmentID string) ([]models.TherapySession, error)
 	Create(session *models.TherapySession) error
@@ -24,16 +24,22 @@ func NewTherapySessionRepository(db *gorm.DB) TherapySessionRepository {
 	return &therapySessionRepository{db}
 }
 
-func (r *therapySessionRepository) FindAll(offset, limit int) ([]models.TherapySession, int64, error) {
+func (r *therapySessionRepository) FindAll(offset, limit int, patientID string) ([]models.TherapySession, int64, error) {
 	var sessions []models.TherapySession
 	var total int64
 
-	err := r.db.Model(&models.TherapySession{}).Count(&total).Error
+	query := r.db.Model(&models.TherapySession{})
+	
+	if patientID != "" {
+		query = query.Where("patient_id = ?", patientID)
+	}
+
+	err := query.Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	err = r.db.Preload("Appointment").Preload("Physiotherapist").Preload("Patient").Preload("Patient.GenderData").Preload("ServiceMaster").Offset(offset).Limit(limit).Find(&sessions).Error
+	err = query.Preload("Appointment").Preload("Physiotherapist").Preload("Patient").Preload("Patient.GenderData").Preload("ServiceMaster").Offset(offset).Limit(limit).Find(&sessions).Error
 	return sessions, total, err
 }
 

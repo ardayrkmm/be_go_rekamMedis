@@ -73,6 +73,13 @@ func (u *medicalRecordUseCase) GetByPatientID(patientID string) ([]models.Medica
 }
 
 func (u *medicalRecordUseCase) populateRelations(record *models.MedicalRecord) {
+	if record.VisitNumber == nil || *record.VisitNumber == "" {
+		vn := fmt.Sprintf("VIS-%s", time.Now().Format("20060102150405"))
+		record.VisitNumber = &vn
+		// Save the generated visit number immediately to DB
+		u.recordRepo.Update(record)
+	}
+
 	if record.PatientID != "" {
 		if patient, err := u.patientRepo.FindByID(record.PatientID); err == nil {
 			record.Patient = patient
@@ -113,7 +120,9 @@ func (u *medicalRecordUseCase) Update(id string, req *models.MedicalRecord) erro
 		return err
 	}
 
-	record.VisitNumber = req.VisitNumber
+	if req.VisitNumber != nil && *req.VisitNumber != "" {
+		record.VisitNumber = req.VisitNumber
+	}
 	record.PatientID = req.PatientID
 	record.ServiceID = req.ServiceID
 	record.PhysiotherapistID = req.PhysiotherapistID

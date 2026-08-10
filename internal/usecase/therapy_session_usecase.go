@@ -8,7 +8,7 @@ import (
 )
 
 type TherapySessionUseCase interface {
-	Fetch(offset, limit int) ([]models.TherapySession, int64, error)
+	Fetch(offset, limit int, patientID string) ([]models.TherapySession, int64, error)
 	GetByID(id string) (*models.TherapySession, error)
 	GetByAppointmentID(appointmentID string) ([]models.TherapySession, error)
 	Store(session *models.TherapySession) error
@@ -19,23 +19,25 @@ type TherapySessionUseCase interface {
 }
 
 type therapySessionUseCase struct {
-	sessionRepo repository.TherapySessionRepository
-	paymentRepo repository.PaymentRepository
-	serviceRepo repository.ServiceMasterRepository
-	recordRepo  repository.MedicalRecordRepository
+	sessionRepo     repository.TherapySessionRepository
+	paymentRepo     repository.PaymentRepository
+	serviceRepo     repository.ServiceMasterRepository
+	recordRepo      repository.MedicalRecordRepository
+	appointmentRepo repository.AppointmentRepository
 }
 
-func NewTherapySessionUseCase(sessionRepo repository.TherapySessionRepository, paymentRepo repository.PaymentRepository, serviceRepo repository.ServiceMasterRepository, recordRepo repository.MedicalRecordRepository) TherapySessionUseCase {
+func NewTherapySessionUseCase(sessionRepo repository.TherapySessionRepository, paymentRepo repository.PaymentRepository, serviceRepo repository.ServiceMasterRepository, recordRepo repository.MedicalRecordRepository, appointmentRepo repository.AppointmentRepository) TherapySessionUseCase {
 	return &therapySessionUseCase{
-		sessionRepo: sessionRepo,
-		paymentRepo: paymentRepo,
-		serviceRepo: serviceRepo,
-		recordRepo:  recordRepo,
+		sessionRepo:     sessionRepo,
+		paymentRepo:     paymentRepo,
+		serviceRepo:     serviceRepo,
+		recordRepo:      recordRepo,
+		appointmentRepo: appointmentRepo,
 	}
 }
 
-func (u *therapySessionUseCase) Fetch(offset, limit int) ([]models.TherapySession, int64, error) {
-	return u.sessionRepo.FindAll(offset, limit)
+func (u *therapySessionUseCase) Fetch(offset, limit int, patientID string) ([]models.TherapySession, int64, error) {
+	return u.sessionRepo.FindAll(offset, limit, patientID)
 }
 
 func (u *therapySessionUseCase) GetByID(id string) (*models.TherapySession, error) {
@@ -243,6 +245,15 @@ func (u *therapySessionUseCase) Update(id string, req *models.TherapySession) er
 					}
 					u.paymentRepo.Create(payment)
 				}
+			}
+		}
+
+		// Update Appointment Status to completed if applicable
+		if session.AppointmentID != "" {
+			appt, err := u.appointmentRepo.FindByID(session.AppointmentID)
+			if err == nil && appt != nil && appt.Status != "completed" {
+				appt.Status = "completed"
+				u.appointmentRepo.Update(appt)
 			}
 		}
 	}
