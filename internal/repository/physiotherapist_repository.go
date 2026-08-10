@@ -6,7 +6,7 @@ import (
 )
 
 type PhysiotherapistRepository interface {
-	FindAll(offset, limit int) ([]models.Physiotherapist, int64, error)
+	FindAll(offset, limit int, search string) ([]models.Physiotherapist, int64, error)
 	FindByID(id string) (*models.Physiotherapist, error)
 	Create(physio *models.Physiotherapist) error
 	Update(physio *models.Physiotherapist) error
@@ -22,16 +22,23 @@ func NewPhysiotherapistRepository(db *gorm.DB) PhysiotherapistRepository {
 	return &physiotherapistRepository{db}
 }
 
-func (r *physiotherapistRepository) FindAll(offset, limit int) ([]models.Physiotherapist, int64, error) {
+func (r *physiotherapistRepository) FindAll(offset, limit int, search string) ([]models.Physiotherapist, int64, error) {
 	var physios []models.Physiotherapist
 	var total int64
 
-	err := r.db.Model(&models.Physiotherapist{}).Count(&total).Error
+	query := r.db.Model(&models.Physiotherapist{})
+
+	if search != "" {
+		searchTerm := "%" + search + "%"
+		query = query.Where("name LIKE ? OR phone LIKE ? OR sip LIKE ?", searchTerm, searchTerm, searchTerm)
+	}
+
+	err := query.Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	err = r.db.Offset(offset).Limit(limit).Find(&physios).Error
+	err = query.Offset(offset).Limit(limit).Find(&physios).Error
 	return physios, total, err
 }
 
@@ -53,9 +60,10 @@ func (r *physiotherapistRepository) Update(physio *models.Physiotherapist) error
 }
 
 func (r *physiotherapistRepository) Delete(id string) error {
-	return r.db.Delete(&models.Physiotherapist{}, id).Error
+	return r.db.Where("id = ?", id).Delete(&models.Physiotherapist{}).Error
 }
 
 func (r *physiotherapistRepository) Restore(id string) error {
 	return r.db.Unscoped().Model(&models.Physiotherapist{}).Where("id = ?", id).Update("deleted_at", nil).Error
 }
+

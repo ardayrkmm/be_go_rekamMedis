@@ -40,5 +40,6 @@ func (r *activityLogRepository) FindByID(id string) (*models.ActivityLog, error)
 }
 
 func (r *activityLogRepository) Delete(id string) error {
-	return r.db.Delete(&models.ActivityLog{}, id).Error
+	return r.db.Where("id = ?", id).Delete(&models.ActivityLog{}).Error
 }
+

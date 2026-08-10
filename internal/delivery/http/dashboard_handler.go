@@ -44,9 +44,8 @@ func (h *DashboardHandler) GetAdminDashboard(c *gin.Context) {
 }
 
 func (h *DashboardHandler) GetFisioDashboard(c *gin.Context) {
-	// Ideally we get physiotherapist ID from token, but for now just pass empty or a dummy ID
-	physiotherapistID := "" 
-	data, err := h.usecase.GetFisioDashboardData(physiotherapistID)
+	userID := c.GetString("userID")
+	data, err := h.usecase.GetFisioDashboardData(userID)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error(), nil)
 		return

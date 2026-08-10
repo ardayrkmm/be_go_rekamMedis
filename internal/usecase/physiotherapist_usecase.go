@@ -9,7 +9,7 @@ import (
 )
 
 type PhysiotherapistUseCase interface {
-	Fetch(offset, limit int) ([]models.Physiotherapist, int64, error)
+	Fetch(offset, limit int, search string) ([]models.Physiotherapist, int64, error)
 	GetByID(id string) (*models.Physiotherapist, error)
 	Store(physio *models.Physiotherapist) error
 	Update(id string, req *models.Physiotherapist) error
@@ -29,8 +29,8 @@ func NewPhysiotherapistUseCase(physioRepo repository.PhysiotherapistRepository, 
 	}
 }
 
-func (u *physiotherapistUseCase) Fetch(offset, limit int) ([]models.Physiotherapist, int64, error) {
-	return u.physioRepo.FindAll(offset, limit)
+func (u *physiotherapistUseCase) Fetch(offset, limit int, search string) ([]models.Physiotherapist, int64, error) {
+	return u.physioRepo.FindAll(offset, limit, search)
 }
 
 func (u *physiotherapistUseCase) GetByID(id string) (*models.Physiotherapist, error) {

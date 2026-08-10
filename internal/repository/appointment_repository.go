@@ -6,7 +6,7 @@ import (
 )
 
 type AppointmentRepository interface {
-	FindAll(offset, limit int) ([]models.Appointment, int64, error)
+	FindAll(offset, limit int, search string) ([]models.Appointment, int64, error)
 	FindByID(id string) (*models.Appointment, error)
 	FindByPatientID(patientID string) ([]models.Appointment, error)
 	FindByPhysiotherapistID(physioID string) ([]models.Appointment, error)
@@ -23,22 +23,30 @@ func NewAppointmentRepository(db *gorm.DB) AppointmentRepository {
 	return &appointmentRepository{db}
 }
 
-func (r *appointmentRepository) FindAll(offset, limit int) ([]models.Appointment, int64, error) {
+func (r *appointmentRepository) FindAll(offset, limit int, search string) ([]models.Appointment, int64, error) {
 	var appointments []models.Appointment
 	var total int64
 
-	err := r.db.Model(&models.Appointment{}).Count(&total).Error
+	query := r.db.Model(&models.Appointment{})
+
+	if search != "" {
+		searchTerm := "%" + search + "%"
+		query = query.Joins("LEFT JOIN patients ON patients.id = appointments.patient_id").
+			Where("appointments.visit_number LIKE ? OR appointments.status LIKE ? OR appointments.complaint LIKE ? OR patients.name LIKE ?", searchTerm, searchTerm, searchTerm, searchTerm)
+	}
+
+	err := query.Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	err = r.db.Preload("Patient").Preload("Physiotherapist").Preload("ServiceMaster").Preload("TherapySession").Offset(offset).Limit(limit).Find(&appointments).Error
+	err = query.Preload("Patient").Preload("Patient.GenderData").Preload("Physiotherapist").Preload("ServiceMaster").Preload("TherapySession").Offset(offset).Limit(limit).Find(&appointments).Error
 	return appointments, total, err
 }
 
 func (r *appointmentRepository) FindByID(id string) (*models.Appointment, error) {
 	var appointment models.Appointment
-	err := r.db.Preload("Patient").Preload("Physiotherapist").Preload("ServiceMaster").Preload("TherapySession").First(&appointment, "id = ?", id).Error
+	err := r.db.Preload("Patient").Preload("Patient.GenderData").Preload("Physiotherapist").Preload("ServiceMaster").Preload("TherapySession").First(&appointment, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +61,7 @@ func (r *appointmentRepository) FindByPatientID(patientID string) ([]models.Appo
 
 func (r *appointmentRepository) FindByPhysiotherapistID(physioID string) ([]models.Appointment, error) {
 	var appointments []models.Appointment
-	err := r.db.Where("physiotherapist_id = ?", physioID).Preload("Patient").Preload("ServiceMaster").Preload("TherapySession").Find(&appointments).Error
+	err := r.db.Where("physiotherapist_id = ?", physioID).Preload("Patient").Preload("Patient.GenderData").Preload("ServiceMaster").Preload("TherapySession").Find(&appointments).Error
 	return appointments, err
 }
 
@@ -66,5 +74,6 @@ func (r *appointmentRepository) Update(appointment *models.Appointment) error {
 }
 
 func (r *appointmentRepository) Delete(id string) error {
-	return r.db.Delete(&models.Appointment{}, id).Error
+	return r.db.Where("id = ?", id).Delete(&models.Appointment{}).Error
 }
+

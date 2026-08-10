@@ -6,7 +6,7 @@ import (
 )
 
 type PatientRepository interface {
-	FindAll(offset, limit int) ([]models.Patient, int64, error)
+	FindAll(offset, limit int, search string) ([]models.Patient, int64, error)
 	FindByID(id string) (*models.Patient, error)
 	Create(patient *models.Patient) error
 	Update(patient *models.Patient) error
@@ -22,16 +22,23 @@ func NewPatientRepository(db *gorm.DB) PatientRepository {
 	return &patientRepository{db}
 }
 
-func (r *patientRepository) FindAll(offset, limit int) ([]models.Patient, int64, error) {
+func (r *patientRepository) FindAll(offset, limit int, search string) ([]models.Patient, int64, error) {
 	var patients []models.Patient
 	var total int64
 
-	err := r.db.Model(&models.Patient{}).Count(&total).Error
+	query := r.db.Model(&models.Patient{})
+
+	if search != "" {
+		searchTerm := "%" + search + "%"
+		query = query.Where("name LIKE ? OR medical_record_number LIKE ? OR phone LIKE ? OR nik LIKE ?", searchTerm, searchTerm, searchTerm, searchTerm)
+	}
+
+	err := query.Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	err = r.db.Preload("Category").Preload("GenderData").Offset(offset).Limit(limit).Find(&patients).Error
+	err = query.Preload("Category").Preload("GenderData").Offset(offset).Limit(limit).Find(&patients).Error
 	return patients, total, err
 }
 
@@ -53,9 +60,10 @@ func (r *patientRepository) Update(patient *models.Patient) error {
 }
 
 func (r *patientRepository) Delete(id string) error {
-	return r.db.Delete(&models.Patient{}, id).Error
+	return r.db.Where("id = ?", id).Delete(&models.Patient{}).Error
 }
 
 func (r *patientRepository) Restore(id string) error {
 	return r.db.Unscoped().Model(&models.Patient{}).Where("id = ?", id).Update("deleted_at", nil).Error
 }
+

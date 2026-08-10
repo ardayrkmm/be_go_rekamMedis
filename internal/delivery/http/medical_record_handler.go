@@ -44,10 +44,11 @@ func NewMedicalRecordHandler(api *gin.RouterGroup, recordUC usecase.MedicalRecor
 func (h *MedicalRecordHandler) Fetch(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "15"))
+	search := c.Query("search")
 
 	offset := (page - 1) * perPage
 
-	records, total, err := h.recordUC.Fetch(offset, perPage)
+	records, total, err := h.recordUC.Fetch(offset, perPage, search)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error(), nil)
 		return
@@ -99,7 +100,7 @@ func (h *MedicalRecordHandler) GetByID(c *gin.Context) {
 }
 
 func (h *MedicalRecordHandler) getPhysiotherapistID(email string) string {
-	physios, _, err := h.physioUC.Fetch(0, 1000)
+	physios, _, err := h.physioUC.Fetch(0, 1000, "")
 	if err != nil {
 		return ""
 	}

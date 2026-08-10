@@ -3,6 +3,7 @@ package usecase
 import (
 	"backend_go/internal/models"
 	"backend_go/internal/repository"
+	"errors"
 )
 
 type PaymentUseCase interface {
@@ -61,6 +62,19 @@ func (u *paymentUseCase) GetByID(id string) (*models.Payment, error) {
 }
 
 func (u *paymentUseCase) Store(payment *models.Payment) error {
+	// Prevent duplicate payments for the same Therapy Session or Appointment
+	if payment.TherapySessionID != "" {
+		existing, err := u.paymentRepo.FindByTherapySessionID(payment.TherapySessionID)
+		if err == nil && existing != nil {
+			return errors.New("Pembayaran untuk sesi terapi ini sudah ada")
+		}
+	} else if payment.AppointmentID != "" {
+		existing, err := u.paymentRepo.FindByAppointmentID(payment.AppointmentID)
+		if err == nil && existing != nil {
+			return errors.New("Pembayaran untuk janji ini sudah ada")
+		}
+	}
+
 	u.populateNames(payment)
 	return u.paymentRepo.Create(payment)
 }

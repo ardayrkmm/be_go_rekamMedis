@@ -8,7 +8,7 @@ import (
 )
 
 type MedicalRecordUseCase interface {
-	Fetch(offset, limit int) ([]models.MedicalRecord, int64, error)
+	Fetch(offset, limit int, search string) ([]models.MedicalRecord, int64, error)
 	GetByID(id string) (*models.MedicalRecord, error)
 	GetByPatientID(patientID string) ([]models.MedicalRecord, error)
 	Store(record *models.MedicalRecord) error
@@ -40,8 +40,8 @@ func NewMedicalRecordUseCase(
 	}
 }
 
-func (u *medicalRecordUseCase) Fetch(offset, limit int) ([]models.MedicalRecord, int64, error) {
-	records, total, err := u.recordRepo.FindAll(offset, limit)
+func (u *medicalRecordUseCase) Fetch(offset, limit int, search string) ([]models.MedicalRecord, int64, error) {
+	records, total, err := u.recordRepo.FindAll(offset, limit, search)
 	if err != nil {
 		return nil, 0, err
 	}

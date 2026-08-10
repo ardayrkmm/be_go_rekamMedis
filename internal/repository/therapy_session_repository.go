@@ -33,13 +33,13 @@ func (r *therapySessionRepository) FindAll(offset, limit int) ([]models.TherapyS
 		return nil, 0, err
 	}
 
-	err = r.db.Preload("Appointment").Preload("Physiotherapist").Preload("Patient").Preload("ServiceMaster").Offset(offset).Limit(limit).Find(&sessions).Error
+	err = r.db.Preload("Appointment").Preload("Physiotherapist").Preload("Patient").Preload("Patient.GenderData").Preload("ServiceMaster").Offset(offset).Limit(limit).Find(&sessions).Error
 	return sessions, total, err
 }
 
 func (r *therapySessionRepository) FindByID(id string) (*models.TherapySession, error) {
 	var session models.TherapySession
-	err := r.db.Preload("Appointment").Preload("Physiotherapist").Preload("Patient").Preload("ServiceMaster").First(&session, "id = ?", id).Error
+	err := r.db.Preload("Appointment").Preload("Physiotherapist").Preload("Patient").Preload("Patient.GenderData").Preload("ServiceMaster").First(&session, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -61,12 +61,12 @@ func (r *therapySessionRepository) Update(session *models.TherapySession) error 
 }
 
 func (r *therapySessionRepository) Delete(id string) error {
-	return r.db.Delete(&models.TherapySession{}, id).Error
+	return r.db.Where("id = ?", id).Delete(&models.TherapySession{}).Error
 }
 
 func (r *therapySessionRepository) GetWeeklySchedule(startDate, endDate string) ([]models.TherapySession, error) {
 	var sessions []models.TherapySession
-	err := r.db.Where("therapy_date >= ? AND therapy_date <= ?", startDate, endDate).Preload("Appointment").Preload("Patient").Preload("Physiotherapist").Preload("ServiceMaster").Find(&sessions).Error
+	err := r.db.Where("therapy_date >= ? AND therapy_date <= ?", startDate+" 00:00:00", endDate+" 23:59:59").Preload("Appointment").Preload("Patient").Preload("Patient.GenderData").Preload("Physiotherapist").Preload("ServiceMaster").Find(&sessions).Error
 	return sessions, err
 }
 
@@ -80,3 +80,4 @@ func (r *therapySessionRepository) HasTreatedPatient(physioID string, patientID 
 	}
 	return count > 0, nil
 }
+

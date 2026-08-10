@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"errors"
 	"backend_go/internal/repository"
 
 	"github.com/gin-gonic/gin"
@@ -8,7 +9,7 @@ import (
 
 type DashboardUsecase interface {
 	GetAdminDashboardData(filter string) (gin.H, error)
-	GetFisioDashboardData(physiotherapistID string) (gin.H, error)
+	GetFisioDashboardData(userID string) (gin.H, error)
 	GetReportsDashboardData() (gin.H, error)
 }
 
@@ -37,9 +38,17 @@ func (u *dashboardUsecase) GetAdminDashboardData(filter string) (gin.H, error) {
 	// Map appointments by status to name and value for frontend BarChart
 	var mappedAppts []gin.H
 	if apptsByStatus != nil {
+		statusNames := map[string]string{
+			"scheduled":   "Dijadwalkan",
+			"telah_tiba":  "Telah Tiba",
+			"ongoing":     "Sedang Terapi",
+			"completed":   "Selesai",
+			"cancelled":   "Dibatalkan",
+		}
 		for _, appt := range apptsByStatus {
+			key := appt["status"].(string)
 			mappedAppts = append(mappedAppts, gin.H{
-				"name":  appt["status"],
+				"name":  statusNames[key],
 				"value": appt["count"],
 			})
 		}
@@ -76,19 +85,32 @@ func (u *dashboardUsecase) GetAdminDashboardData(filter string) (gin.H, error) {
 	}, nil
 }
 
-func (u *dashboardUsecase) GetFisioDashboardData(physiotherapistID string) (gin.H, error) {
-	// Simplistic approach, for fisio dashboard we can fetch counts
-	totalPatients, _ := u.repo.CountPatients() // Ideally should be patients for this physio
-	appointmentsToday, _ := u.repo.CountAppointmentsToday()
+func (u *dashboardUsecase) GetFisioDashboardData(userID string) (gin.H, error) {
+	physioID, err := u.repo.GetPhysioIDByUserID(userID)
+	if err != nil || physioID == "" {
+		return nil, errors.New("physiotherapist not found")
+	}
+
+	totalPatients, _ := u.repo.CountPhysioPatients(physioID)
+	appointmentsToday, _ := u.repo.CountPhysioAppointmentsToday(physioID)
+	sessionsToday, _ := u.repo.CountPhysioTherapySessionsToday(physioID)
+	
+	patientsByMonth, _ := u.repo.CountPhysioPatientsByMonth(physioID)
+	appointmentsByStatus, _ := u.repo.CountPhysioAppointmentsByStatus(physioID)
 	
 	return gin.H{
-		"physiotherapist_name": "Fisioterapis",
-		"today_appointments": appointmentsToday,
-		"today_patients": totalPatients,
-		"today_therapy_sessions": 0,
+		"summary": gin.H{
+			"today_appointments": appointmentsToday,
+			"today_patients": totalPatients,
+			"today_therapy_sessions": sessionsToday,
+		},
+		"charts": gin.H{
+			"patients": patientsByMonth,
+			"appointments": appointmentsByStatus,
+		},
 		"next_appointment": gin.H{
-			"time": "14:30",
-			"patient_name": "Pasien",
+			"time": "-",
+			"patient_name": "-",
 		},
 		"recent_activities": []gin.H{},
 	}, nil

@@ -19,6 +19,13 @@ type DashboardRepository interface {
 	CountAppointmentsByStatus() ([]map[string]interface{}, error)
 	CountTherapySessionsByMonth() ([]map[string]interface{}, error)
 	CountPatientsByMonth() ([]map[string]interface{}, error)
+
+	GetPhysioIDByUserID(userID string) (string, error)
+	CountPhysioPatients(physioID string) (int, error)
+	CountPhysioAppointmentsToday(physioID string) (int, error)
+	CountPhysioTherapySessionsToday(physioID string) (int, error)
+	CountPhysioPatientsByMonth(physioID string) ([]map[string]interface{}, error)
+	CountPhysioAppointmentsByStatus(physioID string) ([]map[string]interface{}, error)
 }
 
 type dashboardRepository struct {
@@ -93,8 +100,9 @@ func (r *dashboardRepository) CountAppointmentsByStatus() ([]map[string]interfac
 	}
 
 	statusMap := map[string]int{
-		"pending":   0,
-		"confirmed": 0,
+		"scheduled":   0,
+		"telah_tiba": 0,
+		"ongoing": 0,
 		"completed": 0,
 		"cancelled": 0,
 	}
@@ -103,7 +111,7 @@ func (r *dashboardRepository) CountAppointmentsByStatus() ([]map[string]interfac
 	}
 
 	var finalResult []map[string]interface{}
-	for _, k := range []string{"pending", "confirmed", "completed", "cancelled"} {
+	for _, k := range []string{"scheduled", "telah_tiba", "ongoing", "completed", "cancelled"} {
 		finalResult = append(finalResult, map[string]interface{}{
 			"status": k,
 			"count":  statusMap[k],
@@ -187,4 +195,110 @@ func (r *dashboardRepository) CountPatientsByMonth() ([]map[string]interface{}, 
 	}
 
 	return finalResult, nil
+}
+
+func (r *dashboardRepository) GetPhysioIDByUserID(userID string) (string, error) {
+	// Step 1: get the user's email from the users table
+	var userEmail string
+	err := r.db.Table("users").Where("id = ?", userID).Select("email").Scan(&userEmail).Error
+	if err != nil || userEmail == "" {
+		return "", err
+	}
+
+	// Step 2: find physiotherapist by email
+	var physioID string
+	err = r.db.Table("physiotherapists").Where("email = ?", userEmail).Select("id").Scan(&physioID).Error
+	return physioID, err
+}
+
+func (r *dashboardRepository) CountPhysioPatients(physioID string) (int, error) {
+	var count int64
+	err := r.db.Model(&models.Appointment{}).Where("physiotherapist_id = ?", physioID).Select("COUNT(DISTINCT patient_id)").Scan(&count).Error
+	return int(count), err
+}
+
+func (r *dashboardRepository) CountPhysioAppointmentsToday(physioID string) (int, error) {
+	var count int64
+	todayStr := time.Now().Format("2006-01-02")
+	err := r.db.Model(&models.Appointment{}).Where("physiotherapist_id = ? AND DATE(appointment_date) = ?", physioID, todayStr).Count(&count).Error
+	return int(count), err
+}
+
+func (r *dashboardRepository) CountPhysioTherapySessionsToday(physioID string) (int, error) {
+	var count int64
+	todayStr := time.Now().Format("2006-01-02")
+	err := r.db.Model(&models.TherapySession{}).Joins("JOIN appointments on appointments.id = therapy_sessions.appointment_id").Where("appointments.physiotherapist_id = ? AND DATE(therapy_sessions.therapy_date) = ?", physioID, todayStr).Count(&count).Error
+	return int(count), err
+}
+
+func (r *dashboardRepository) CountPhysioPatientsByMonth(physioID string) ([]map[string]interface{}, error) {
+	type Result struct {
+		Month string
+		Count int
+	}
+	var results []Result
+	sixMonthsAgo := time.Now().AddDate(0, -5, 0)
+	startOfMonth := time.Date(sixMonthsAgo.Year(), sixMonthsAgo.Month(), 1, 0, 0, 0, 0, sixMonthsAgo.Location())
+
+	// For patients by month for this physio, we count unique patients from appointments
+	err := r.db.Model(&models.Appointment{}).
+		Select("DATE_FORMAT(appointment_date, '%Y-%m') as month, COUNT(DISTINCT patient_id) as count").
+		Where("physiotherapist_id = ? AND appointment_date >= ?", physioID, startOfMonth).
+		Group("month").Scan(&results).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Prepare last 6 months list
+	var finalResults []map[string]interface{}
+	for i := 5; i >= 0; i-- {
+		m := time.Now().AddDate(0, -i, 0)
+		monthStr := m.Format("2006-01")
+		monthName := m.Format("Jan")
+
+		count := 0
+		for _, r := range results {
+			if r.Month == monthStr {
+				count = r.Count
+				break
+			}
+		}
+
+		finalResults = append(finalResults, map[string]interface{}{
+			"month": monthName,
+			"total": count,
+		})
+	}
+	return finalResults, nil
+}
+
+func (r *dashboardRepository) CountPhysioAppointmentsByStatus(physioID string) ([]map[string]interface{}, error) {
+	type Result struct {
+		Status string
+		Count  int
+	}
+	var results []Result
+	err := r.db.Model(&models.Appointment{}).Where("physiotherapist_id = ?", physioID).Select("status, COUNT(id) as count").Group("status").Scan(&results).Error
+	if err != nil {
+		return nil, err
+	}
+
+	statusMap := map[string]int{
+		"scheduled":  0,
+		"telah_tiba": 0,
+		"ongoing":    0,
+		"completed":  0,
+		"cancelled":  0,
+	}
+
+	for _, r := range results {
+		statusMap[r.Status] = r.Count
+	}
+
+	return []map[string]interface{}{
+		{"name": "Selesai", "value": statusMap["completed"]},
+		{"name": "Dijadwalkan", "value": statusMap["scheduled"] + statusMap["telah_tiba"] + statusMap["ongoing"]},
+		{"name": "Dibatalkan", "value": statusMap["cancelled"]},
+	}, nil
 }

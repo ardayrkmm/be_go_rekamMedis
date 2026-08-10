@@ -179,7 +179,75 @@ func (u *therapySessionUseCase) Update(id string, req *models.TherapySession) er
 		session.TreatmentGiven = req.TreatmentGiven
 	}
 
-	return u.sessionRepo.Update(session)
+	err = u.sessionRepo.Update(session)
+	if err != nil {
+		return err
+	}
+
+	// Auto-create payment if completed and doesn't exist
+	if session.Status == "completed" {
+		existingPayment, err := u.paymentRepo.FindByTherapySessionID(session.ID)
+		if err != nil || existingPayment == nil {
+			// If not found by TherapySessionID, try AppointmentID
+			if session.AppointmentID != "" {
+				existingPayment, _ = u.paymentRepo.FindByAppointmentID(session.AppointmentID)
+			}
+		}
+
+		if existingPayment == nil {
+			var serviceIDs []string
+			if len(session.ServiceMasterIDs) > 0 {
+				serviceIDs = session.ServiceMasterIDs
+			} else if session.ServiceMasterID != "" {
+				serviceIDs = []string{session.ServiceMasterID}
+			}
+
+			if len(serviceIDs) > 0 {
+				var details []models.PaymentDetail
+				var subtotal float64
+				for _, id := range serviceIDs {
+					service, err := u.serviceRepo.FindByID(id)
+					if err == nil && service != nil {
+						details = append(details, models.PaymentDetail{
+							ServiceMasterID: service.ID,
+							ItemName:        service.Name,
+							Quantity:        1,
+							Price:           service.BasePrice,
+							Subtotal:        service.BasePrice,
+							CreatedAt:       time.Now(),
+							UpdatedAt:       time.Now(),
+						})
+						subtotal += service.BasePrice
+					}
+				}
+
+				if len(details) > 0 {
+					payment := &models.Payment{
+						InvoiceNumber:     "INV-" + time.Now().Format("20060102150405"),
+						TherapySessionID:  session.ID,
+						PatientID:         session.PatientID,
+						PhysiotherapistID: session.PhysiotherapistID,
+						PaymentDate:       session.TherapyDate,
+						PaymentMethod:     "cash", // default
+						Status:            "pending",
+						Subtotal:          subtotal,
+						Discount:          0,
+						Tax:               0,
+						Total:             subtotal,
+						PaymentDetails:    details,
+						CreatedAt:         time.Now(),
+						UpdatedAt:         time.Now(),
+					}
+					if session.AppointmentID != "" {
+						payment.AppointmentID = session.AppointmentID
+					}
+					u.paymentRepo.Create(payment)
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 func (u *therapySessionUseCase) Delete(id string) error {

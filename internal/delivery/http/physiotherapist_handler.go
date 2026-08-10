@@ -37,10 +37,11 @@ func NewPhysiotherapistHandler(api *gin.RouterGroup, physioUC usecase.Physiother
 func (h *PhysiotherapistHandler) Fetch(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "15"))
+	search := c.Query("search")
 
 	offset := (page - 1) * perPage
 
-	physios, total, err := h.physioUC.Fetch(offset, perPage)
+	physios, total, err := h.physioUC.Fetch(offset, perPage, search)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error(), nil)
 		return

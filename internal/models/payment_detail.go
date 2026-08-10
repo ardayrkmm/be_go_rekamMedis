@@ -20,6 +20,7 @@ type PaymentDetail struct {
 	DeletedAt *time.Time `json:"-" firestore:"DeletedAt"`
 
 	Payment *Payment `json:"payment,omitempty" gorm:"foreignKey:PaymentID;constraint:-"`
+	ServiceMaster *ServiceMaster `json:"service_master,omitempty" gorm:"foreignKey:ServiceMasterID;constraint:-"`
 }
 
 

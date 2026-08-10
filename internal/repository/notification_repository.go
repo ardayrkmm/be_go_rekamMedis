@@ -59,10 +59,11 @@ func (r *notificationRepository) Update(notification *models.Notification) error
 }
 
 func (r *notificationRepository) Delete(id string) error {
-	return r.db.Delete(&models.Notification{}, id).Error
+	return r.db.Where("id = ?", id).Delete(&models.Notification{}).Error
 }
 
 func (r *notificationRepository) MarkAllAsRead() error {
 	now := time.Now()
 	return r.db.Model(&models.Notification{}).Where("read_at IS NULL").Update("read_at", now).Error
 }
+

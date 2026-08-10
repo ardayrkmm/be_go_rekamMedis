@@ -50,5 +50,6 @@ func (r *exerciseProgramRepository) Update(program *models.ExerciseProgram) erro
 }
 
 func (r *exerciseProgramRepository) Delete(id string) error {
-	return r.db.Delete(&models.ExerciseProgram{}, id).Error
+	return r.db.Where("id = ?", id).Delete(&models.ExerciseProgram{}).Error
 }
+

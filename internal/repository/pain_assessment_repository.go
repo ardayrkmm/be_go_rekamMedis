@@ -50,5 +50,6 @@ func (r *painAssessmentRepository) Update(assessment *models.PainAssessment) err
 }
 
 func (r *painAssessmentRepository) Delete(id string) error {
-	return r.db.Delete(&models.PainAssessment{}, id).Error
+	return r.db.Where("id = ?", id).Delete(&models.PainAssessment{}).Error
 }
+

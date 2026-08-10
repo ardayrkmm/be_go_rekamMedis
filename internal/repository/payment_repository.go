@@ -11,6 +11,7 @@ type PaymentRepository interface {
 	Create(payment *models.Payment) error
 	Update(payment *models.Payment) error
 	FindByAppointmentID(appointmentID string) (*models.Payment, error)
+	FindByTherapySessionID(therapySessionID string) (*models.Payment, error)
 }
 
 type paymentRepository struct {
@@ -31,12 +32,12 @@ func (r *paymentRepository) FindAll(offset, limit int, search, status, startDate
 		query = query.Where("status = ?", status)
 	}
 	if startDate != "" && endDate != "" {
-		query = query.Where("payment_date >= ? AND payment_date <= ?", startDate, endDate)
+		query = query.Where("payment_date >= ? AND payment_date <= ?", startDate+" 00:00:00", endDate+" 23:59:59")
 	}
 
-	// For search, we might need to join or just filter by invoice_number
 	if search != "" {
-		query = query.Where("invoice_number LIKE ?", "%"+search+"%")
+		searchTerm := "%" + search + "%"
+		query = query.Where("invoice_number LIKE ? OR patient_name LIKE ? OR physiotherapist_name LIKE ?", searchTerm, searchTerm, searchTerm)
 	}
 
 	err := query.Count(&total).Error
@@ -44,13 +45,13 @@ func (r *paymentRepository) FindAll(offset, limit int, search, status, startDate
 		return nil, 0, err
 	}
 
-	err = query.Preload("Appointment").Preload("Patient").Preload("PaymentDetails.ServiceMaster").Offset(offset).Limit(limit).Find(&payments).Error
+	err = query.Preload("Appointment").Preload("Patient").Preload("Patient.GenderData").Preload("PaymentDetails.ServiceMaster").Offset(offset).Limit(limit).Find(&payments).Error
 	return payments, total, err
 }
 
 func (r *paymentRepository) FindByID(id string) (*models.Payment, error) {
 	var payment models.Payment
-	err := r.db.Preload("Appointment").Preload("Patient").Preload("PaymentDetails.ServiceMaster").First(&payment, "id = ?", id).Error
+	err := r.db.Preload("Appointment").Preload("Patient").Preload("Patient.GenderData").Preload("PaymentDetails.ServiceMaster").First(&payment, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -68,6 +69,15 @@ func (r *paymentRepository) Update(payment *models.Payment) error {
 func (r *paymentRepository) FindByAppointmentID(appointmentID string) (*models.Payment, error) {
 	var payment models.Payment
 	err := r.db.Where("appointment_id = ?", appointmentID).First(&payment).Error
+	if err != nil {
+		return nil, err
+	}
+	return &payment, nil
+}
+
+func (r *paymentRepository) FindByTherapySessionID(therapySessionID string) (*models.Payment, error) {
+	var payment models.Payment
+	err := r.db.Where("therapy_session_id = ?", therapySessionID).First(&payment).Error
 	if err != nil {
 		return nil, err
 	}

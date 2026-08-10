@@ -36,10 +36,11 @@ func NewPatientHandler(api *gin.RouterGroup, patientUC usecase.PatientUseCase) {
 func (h *PatientHandler) Fetch(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "15"))
+	search := c.Query("search")
 
 	offset := (page - 1) * perPage
 
-	patients, total, err := h.patientUC.Fetch(offset, perPage)
+	patients, total, err := h.patientUC.Fetch(offset, perPage, search)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error(), nil)
 		return

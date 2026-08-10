@@ -6,7 +6,7 @@ import (
 )
 
 type ServiceMasterRepository interface {
-	FindAll(offset, limit int) ([]models.ServiceMaster, int64, error)
+	FindAll(offset, limit int, search string) ([]models.ServiceMaster, int64, error)
 	FindByID(id string) (*models.ServiceMaster, error)
 	Create(service *models.ServiceMaster) error
 	Update(service *models.ServiceMaster) error
@@ -21,16 +21,23 @@ func NewServiceMasterRepository(db *gorm.DB) ServiceMasterRepository {
 	return &serviceMasterRepository{db}
 }
 
-func (r *serviceMasterRepository) FindAll(offset, limit int) ([]models.ServiceMaster, int64, error) {
+func (r *serviceMasterRepository) FindAll(offset, limit int, search string) ([]models.ServiceMaster, int64, error) {
 	var services []models.ServiceMaster
 	var total int64
 
-	err := r.db.Model(&models.ServiceMaster{}).Count(&total).Error
+	query := r.db.Model(&models.ServiceMaster{})
+
+	if search != "" {
+		searchTerm := "%" + search + "%"
+		query = query.Where("name LIKE ? OR code LIKE ? OR category LIKE ?", searchTerm, searchTerm, searchTerm)
+	}
+
+	err := query.Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	err = r.db.Offset(offset).Limit(limit).Find(&services).Error
+	err = query.Offset(offset).Limit(limit).Find(&services).Error
 	return services, total, err
 }
 
@@ -52,5 +59,5 @@ func (r *serviceMasterRepository) Update(service *models.ServiceMaster) error {
 }
 
 func (r *serviceMasterRepository) Delete(id string) error {
-	return r.db.Delete(&models.ServiceMaster{}, id).Error
+	return r.db.Where("id = ?", id).Delete(&models.ServiceMaster{}).Error
 }

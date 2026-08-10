@@ -64,9 +64,10 @@ func (r *userRepository) Update(user *models.User) error {
 }
 
 func (r *userRepository) Delete(id string) error {
-	return r.db.Delete(&models.User{}, id).Error
+	return r.db.Where("id = ?", id).Delete(&models.User{}).Error
 }
 
 func (r *userRepository) Restore(id string) error {
 	return r.db.Unscoped().Model(&models.User{}).Where("id = ?", id).Update("deleted_at", nil).Error
 }
+

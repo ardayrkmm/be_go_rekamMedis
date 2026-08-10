@@ -179,7 +179,7 @@ func (h *TherapySessionHandler) GetWeeklySchedule(c *gin.Context) {
 }
 
 func (h *TherapySessionHandler) getPhysiotherapistID(email string) string {
-	physios, _, err := h.physioUC.Fetch(0, 1000)
+	physios, _, err := h.physioUC.Fetch(0, 1000, "")
 	if err != nil {
 		return ""
 	}

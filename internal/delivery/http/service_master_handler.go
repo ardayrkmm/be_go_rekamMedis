@@ -35,10 +35,11 @@ func NewServiceMasterHandler(api *gin.RouterGroup, serviceUC usecase.ServiceMast
 func (h *ServiceMasterHandler) Fetch(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "15"))
+	search := c.Query("search")
 
 	offset := (page - 1) * perPage
 
-	services, total, err := h.serviceUC.Fetch(offset, perPage)
+	services, total, err := h.serviceUC.Fetch(offset, perPage, search)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error(), nil)
 		return

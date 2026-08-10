@@ -7,7 +7,7 @@ import (
 )
 
 type ServiceMasterUseCase interface {
-	Fetch(offset, limit int) ([]models.ServiceMaster, int64, error)
+	Fetch(offset, limit int, search string) ([]models.ServiceMaster, int64, error)
 	GetByID(id string) (*models.ServiceMaster, error)
 	Store(service *models.ServiceMaster) error
 	Update(id string, service *models.ServiceMaster) error
@@ -24,8 +24,8 @@ func NewServiceMasterUseCase(serviceRepo repository.ServiceMasterRepository) Ser
 	}
 }
 
-func (u *serviceMasterUseCase) Fetch(offset, limit int) ([]models.ServiceMaster, int64, error) {
-	return u.serviceRepo.FindAll(offset, limit)
+func (u *serviceMasterUseCase) Fetch(offset, limit int, search string) ([]models.ServiceMaster, int64, error) {
+	return u.serviceRepo.FindAll(offset, limit, search)
 }
 
 func (u *serviceMasterUseCase) GetByID(id string) (*models.ServiceMaster, error) {

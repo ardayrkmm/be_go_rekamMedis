@@ -9,7 +9,7 @@ import (
 )
 
 type AppointmentUseCase interface {
-	Fetch(offset, limit int) ([]models.Appointment, int64, error)
+	Fetch(offset, limit int, search string) ([]models.Appointment, int64, error)
 	GetByID(id string) (*models.Appointment, error)
 	GetByPatientID(patientID string) ([]models.Appointment, error)
 	GetByPhysiotherapistID(physioID string) ([]models.Appointment, error)
@@ -34,8 +34,8 @@ func NewAppointmentUseCase(appointmentRepo repository.AppointmentRepository, pay
 	}
 }
 
-func (u *appointmentUseCase) Fetch(offset, limit int) ([]models.Appointment, int64, error) {
-	return u.appointmentRepo.FindAll(offset, limit)
+func (u *appointmentUseCase) Fetch(offset, limit int, search string) ([]models.Appointment, int64, error) {
+	return u.appointmentRepo.FindAll(offset, limit, search)
 }
 
 func (u *appointmentUseCase) GetByID(id string) (*models.Appointment, error) {

@@ -7,7 +7,7 @@ import (
 )
 
 type PatientUseCase interface {
-	Fetch(offset, limit int) ([]models.Patient, int64, error)
+	Fetch(offset, limit int, search string) ([]models.Patient, int64, error)
 	GetByID(id string) (*models.Patient, error)
 	Store(patient *models.Patient) error
 	Update(id string, req *models.Patient) error
@@ -25,8 +25,8 @@ func NewPatientUseCase(patientRepo repository.PatientRepository) PatientUseCase 
 	}
 }
 
-func (u *patientUseCase) Fetch(offset, limit int) ([]models.Patient, int64, error) {
-	return u.patientRepo.FindAll(offset, limit)
+func (u *patientUseCase) Fetch(offset, limit int, search string) ([]models.Patient, int64, error) {
+	return u.patientRepo.FindAll(offset, limit, search)
 }
 
 func (u *patientUseCase) GetByID(id string) (*models.Patient, error) {
