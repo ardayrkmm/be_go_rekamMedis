@@ -40,10 +40,13 @@ func (h *AppointmentHandler) Fetch(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "15"))
 	search := c.Query("search")
+	status := c.Query("status")
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
 
 	offset := (page - 1) * perPage
 
-	appointments, total, err := h.appointmentUC.Fetch(offset, perPage, search)
+	appointments, total, err := h.appointmentUC.Fetch(offset, perPage, search, status, startDate, endDate)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error(), nil)
 		return

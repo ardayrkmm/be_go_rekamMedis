@@ -6,7 +6,7 @@ import (
 )
 
 type TherapySessionRepository interface {
-	FindAll(offset, limit int, patientID string) ([]models.TherapySession, int64, error)
+	FindAll(offset, limit int, patientID string, search string) ([]models.TherapySession, int64, error)
 	FindByID(id string) (*models.TherapySession, error)
 	FindByAppointmentID(appointmentID string) ([]models.TherapySession, error)
 	Create(session *models.TherapySession) error
@@ -24,7 +24,7 @@ func NewTherapySessionRepository(db *gorm.DB) TherapySessionRepository {
 	return &therapySessionRepository{db}
 }
 
-func (r *therapySessionRepository) FindAll(offset, limit int, patientID string) ([]models.TherapySession, int64, error) {
+func (r *therapySessionRepository) FindAll(offset, limit int, patientID string, search string) ([]models.TherapySession, int64, error) {
 	var sessions []models.TherapySession
 	var total int64
 
@@ -32,6 +32,12 @@ func (r *therapySessionRepository) FindAll(offset, limit int, patientID string) 
 	
 	if patientID != "" {
 		query = query.Where("patient_id = ?", patientID)
+	}
+
+	if search != "" {
+		searchTerm := "%" + search + "%"
+		query = query.Joins("LEFT JOIN patients ON patients.id = therapy_sessions.patient_id").
+			Where("therapy_sessions.status LIKE ? OR therapy_sessions.treatment_given LIKE ? OR patients.name LIKE ?", searchTerm, searchTerm, searchTerm)
 	}
 
 	err := query.Count(&total).Error

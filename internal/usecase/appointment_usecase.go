@@ -9,7 +9,7 @@ import (
 )
 
 type AppointmentUseCase interface {
-	Fetch(offset, limit int, search string) ([]models.Appointment, int64, error)
+	Fetch(offset, limit int, search string, status string, startDate string, endDate string) ([]models.Appointment, int64, error)
 	GetByID(id string) (*models.Appointment, error)
 	GetByPatientID(patientID string) ([]models.Appointment, error)
 	GetByPhysiotherapistID(physioID string) ([]models.Appointment, error)
@@ -34,8 +34,8 @@ func NewAppointmentUseCase(appointmentRepo repository.AppointmentRepository, pay
 	}
 }
 
-func (u *appointmentUseCase) Fetch(offset, limit int, search string) ([]models.Appointment, int64, error) {
-	return u.appointmentRepo.FindAll(offset, limit, search)
+func (u *appointmentUseCase) Fetch(offset, limit int, search string, status string, startDate string, endDate string) ([]models.Appointment, int64, error) {
+	return u.appointmentRepo.FindAll(offset, limit, search, status, startDate, endDate)
 }
 
 func (u *appointmentUseCase) GetByID(id string) (*models.Appointment, error) {
@@ -88,12 +88,23 @@ func (u *appointmentUseCase) Store(appointment *models.Appointment) error {
 			// Wait, the appointment doesn't have the patient struct populated in Store() request, so we must fetch it.
 			// Let's just create it. The payment list requires patient name, but wait, I can just leave it empty and let the fetch populate it. No, fetch doesn't populate it in NoSQL!
 			
+			var paymentDate *time.Time
+			if appointment.AppointmentDate != nil {
+				pd := *appointment.AppointmentDate
+				if appointment.AppointmentTime != "" {
+					if parsedTime, err := time.Parse("15:04", appointment.AppointmentTime); err == nil {
+						pd = time.Date(pd.Year(), pd.Month(), pd.Day(), parsedTime.Hour(), parsedTime.Minute(), 0, 0, pd.Location())
+					}
+				}
+				paymentDate = &pd
+			}
+			
 			payment := &models.Payment{
 				InvoiceNumber:    "INV-" + time.Now().Format("20060102150405"),
 				AppointmentID:    appointment.ID,
 				PatientID:        appointment.PatientID,
 				PhysiotherapistID: appointment.PhysiotherapistID,
-				PaymentDate:      appointment.AppointmentDate,
+				PaymentDate:      paymentDate,
 				PaymentMethod:    "cash",
 				Status:           "pending",
 				Subtotal:         service.BasePrice,
@@ -136,6 +147,12 @@ func (u *appointmentUseCase) Update(id string, req *models.Appointment) error {
 		appointment.AppointmentDate = req.AppointmentDate
 	}
 	if req.Status != "" {
+		if req.Status == "cancelled" && appointment.Status != "cancelled" {
+			// Delete associated pending payment if exists
+			if payment, err := u.paymentRepo.FindByAppointmentID(id); err == nil && payment != nil {
+				u.paymentRepo.Delete(payment.ID)
+			}
+		}
 		appointment.Status = req.Status
 	}
 	if req.Notes != "" {
@@ -155,6 +172,12 @@ func (u *appointmentUseCase) Cancel(id string) error {
 		return err
 	}
 	appointment.Status = "cancelled"
+	
+	// Delete associated pending payment if exists
+	if payment, err := u.paymentRepo.FindByAppointmentID(id); err == nil && payment != nil {
+		u.paymentRepo.Delete(payment.ID)
+	}
+
 	return u.appointmentRepo.Update(appointment)
 }
 

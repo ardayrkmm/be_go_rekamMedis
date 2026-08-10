@@ -12,6 +12,7 @@ type PaymentRepository interface {
 	Update(payment *models.Payment) error
 	FindByAppointmentID(appointmentID string) (*models.Payment, error)
 	FindByTherapySessionID(therapySessionID string) (*models.Payment, error)
+	Delete(id string) error
 }
 
 type paymentRepository struct {
@@ -45,7 +46,7 @@ func (r *paymentRepository) FindAll(offset, limit int, search, status, startDate
 		return nil, 0, err
 	}
 
-	err = query.Preload("Appointment").Preload("Patient").Preload("Patient.GenderData").Preload("PaymentDetails.ServiceMaster").Offset(offset).Limit(limit).Find(&payments).Error
+	err = query.Preload("Appointment").Preload("Patient").Preload("Patient.GenderData").Preload("PaymentDetails.ServiceMaster").Order("payment_date ASC").Offset(offset).Limit(limit).Find(&payments).Error
 	return payments, total, err
 }
 
@@ -64,6 +65,10 @@ func (r *paymentRepository) Create(payment *models.Payment) error {
 
 func (r *paymentRepository) Update(payment *models.Payment) error {
 	return r.db.Save(payment).Error
+}
+
+func (r *paymentRepository) Delete(id string) error {
+	return r.db.Delete(&models.Payment{}, "id = ?", id).Error
 }
 
 func (r *paymentRepository) FindByAppointmentID(appointmentID string) (*models.Payment, error) {

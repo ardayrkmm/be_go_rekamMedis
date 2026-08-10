@@ -6,7 +6,7 @@ import (
 )
 
 type AppointmentRepository interface {
-	FindAll(offset, limit int, search string) ([]models.Appointment, int64, error)
+	FindAll(offset, limit int, search string, status string, startDate string, endDate string) ([]models.Appointment, int64, error)
 	FindByID(id string) (*models.Appointment, error)
 	FindByPatientID(patientID string) ([]models.Appointment, error)
 	FindByPhysiotherapistID(physioID string) ([]models.Appointment, error)
@@ -23,7 +23,7 @@ func NewAppointmentRepository(db *gorm.DB) AppointmentRepository {
 	return &appointmentRepository{db}
 }
 
-func (r *appointmentRepository) FindAll(offset, limit int, search string) ([]models.Appointment, int64, error) {
+func (r *appointmentRepository) FindAll(offset, limit int, search string, status string, startDate string, endDate string) ([]models.Appointment, int64, error) {
 	var appointments []models.Appointment
 	var total int64
 
@@ -33,6 +33,18 @@ func (r *appointmentRepository) FindAll(offset, limit int, search string) ([]mod
 		searchTerm := "%" + search + "%"
 		query = query.Joins("LEFT JOIN patients ON patients.id = appointments.patient_id").
 			Where("appointments.visit_number LIKE ? OR appointments.status LIKE ? OR appointments.complaint LIKE ? OR patients.name LIKE ?", searchTerm, searchTerm, searchTerm, searchTerm)
+	}
+
+	if status != "" {
+		query = query.Where("appointments.status = ?", status)
+	}
+
+	if startDate != "" {
+		query = query.Where("appointments.appointment_date >= ?", startDate)
+	}
+
+	if endDate != "" {
+		query = query.Where("appointments.appointment_date <= ?", endDate)
 	}
 
 	err := query.Count(&total).Error

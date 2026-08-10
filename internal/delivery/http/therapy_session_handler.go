@@ -42,12 +42,13 @@ func (h *TherapySessionHandler) Fetch(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "15"))
 	patientID := c.Query("patient_id")
+	search := c.Query("search")
 
 	offset := (page - 1) * perPage
 
 	// GLOBAL VISIBILITY: semua role melihat seluruh sesi klinik.
 	// Authorization edit dilakukan saat update/delete.
-	sessions, total, err := h.sessionUC.Fetch(offset, perPage, patientID)
+	sessions, total, err := h.sessionUC.Fetch(offset, perPage, patientID, search)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error(), nil)
 		return

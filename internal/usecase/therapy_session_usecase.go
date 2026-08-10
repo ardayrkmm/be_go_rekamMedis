@@ -8,7 +8,7 @@ import (
 )
 
 type TherapySessionUseCase interface {
-	Fetch(offset, limit int, patientID string) ([]models.TherapySession, int64, error)
+	Fetch(offset, limit int, patientID string, search string) ([]models.TherapySession, int64, error)
 	GetByID(id string) (*models.TherapySession, error)
 	GetByAppointmentID(appointmentID string) ([]models.TherapySession, error)
 	Store(session *models.TherapySession) error
@@ -36,8 +36,8 @@ func NewTherapySessionUseCase(sessionRepo repository.TherapySessionRepository, p
 	}
 }
 
-func (u *therapySessionUseCase) Fetch(offset, limit int, patientID string) ([]models.TherapySession, int64, error) {
-	return u.sessionRepo.FindAll(offset, limit, patientID)
+func (u *therapySessionUseCase) Fetch(offset, limit int, patientID string, search string) ([]models.TherapySession, int64, error) {
+	return u.sessionRepo.FindAll(offset, limit, patientID, search)
 }
 
 func (u *therapySessionUseCase) GetByID(id string) (*models.TherapySession, error) {
@@ -247,12 +247,14 @@ func (u *therapySessionUseCase) Update(id string, req *models.TherapySession) er
 				}
 			}
 		}
-
-		// Update Appointment Status to completed if applicable
-		if session.AppointmentID != "" {
+	}
+    
+	// Update Appointment Status to completed or cancelled if applicable
+	if session.AppointmentID != "" {
+		if session.Status == "completed" || session.Status == "cancelled" {
 			appt, err := u.appointmentRepo.FindByID(session.AppointmentID)
-			if err == nil && appt != nil && appt.Status != "completed" {
-				appt.Status = "completed"
+			if err == nil && appt != nil && appt.Status != session.Status {
+				appt.Status = session.Status
 				u.appointmentRepo.Update(appt)
 			}
 		}
