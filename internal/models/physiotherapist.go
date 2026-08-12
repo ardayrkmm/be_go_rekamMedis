@@ -11,7 +11,7 @@ type Physiotherapist struct {
 	ID string `firestore:"id,omitempty" json:"id" gorm:"type:varchar(36);primaryKey"`
 	Name           string         `json:"name"`
 	Specialization *string        `json:"specialization"`
-	Sip            *string        `json:"sip" gorm:"uniqueIndex;type:varchar(255)"`
+	Sip            *string        `json:"sip" gorm:"type:varchar(255)"`
 	Phone          string         `json:"phone"`
 	Email     string         `json:"email"`
 	Address   string         `json:"address"`
