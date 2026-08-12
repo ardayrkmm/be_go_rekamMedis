@@ -60,7 +60,16 @@ func (r *patientRepository) Update(patient *models.Patient) error {
 }
 
 func (r *patientRepository) Delete(id string) error {
-	return r.db.Where("id = ?", id).Delete(&models.Patient{}).Error
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// Delete related records to prevent orphaned data
+		tx.Where("patient_id = ?", id).Delete(&models.MedicalRecord{})
+		tx.Where("patient_id = ?", id).Delete(&models.TherapySession{})
+		tx.Where("patient_id = ?", id).Delete(&models.Appointment{})
+		tx.Where("patient_id = ?", id).Delete(&models.Payment{})
+		
+		// Finally delete the patient
+		return tx.Where("id = ?", id).Delete(&models.Patient{}).Error
+	})
 }
 
 func (r *patientRepository) Restore(id string) error {

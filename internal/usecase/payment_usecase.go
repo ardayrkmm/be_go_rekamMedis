@@ -12,6 +12,7 @@ type PaymentUseCase interface {
 	Store(payment *models.Payment) error
 	Update(id string, payment *models.Payment) error
 	UpdateStatus(id string, status string) error
+	Delete(id string) error
 }
 
 type paymentUseCase struct {
@@ -122,4 +123,14 @@ func (u *paymentUseCase) Update(id string, req *models.Payment) error {
 	}
 
 	return u.paymentRepo.Update(existing)
+}
+
+func (u *paymentUseCase) Delete(id string) error {
+	// First check if it exists
+	_, err := u.paymentRepo.FindByID(id)
+	if err != nil {
+		return err
+	}
+	
+	return u.paymentRepo.Delete(id)
 }

@@ -15,10 +15,6 @@ func SuccessResponse(c *gin.Context, code int, message string, data interface{})
 
 // ErrorResponse mimicking Laravel's ApiResponse trait errorResponse
 func ErrorResponse(c *gin.Context, code int, message string, errors interface{}) {
-	if code >= 500 {
-		message = "Ada kendala di server..."
-	}
-
 	response := gin.H{
 		"success": false,
 		"message": message,

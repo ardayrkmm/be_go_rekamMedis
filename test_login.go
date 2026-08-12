@@ -1,26 +1,25 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
-	"backend_go/pkg/utils"
-	"backend_go/internal/repository"
-	"github.com/joho/godotenv"
+	"io/ioutil"
+	"net/http"
 )
 
 func main() {
-	godotenv.Load(".env")
-	db := utils.ConnectDB()
-	
-	repo := repository.NewUserRepository(db)
-	user, err := repo.FindByEmail("test@rme.com")
+	jsonBody := []byte(`{"email":"admin@example.com","password":"wrongpassword"}`)
+	req, _ := http.NewRequest("POST", "http://127.0.0.1:8001/api/v1/auth/login", bytes.NewBuffer(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println("Error:", err)
-		return
+		panic(err)
 	}
-	if user == nil {
-		fmt.Println("User not found!")
-		return
-	}
-	fmt.Printf("User: %+v\n", user)
-	fmt.Printf("User.Password: %q\n", user.Password)
+	defer resp.Body.Close()
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	fmt.Printf("Status: %s\n", resp.Status)
+	fmt.Printf("Body: %s\n", string(body))
 }

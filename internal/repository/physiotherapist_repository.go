@@ -60,7 +60,14 @@ func (r *physiotherapistRepository) Update(physio *models.Physiotherapist) error
 }
 
 func (r *physiotherapistRepository) Delete(id string) error {
-	return r.db.Where("id = ?", id).Delete(&models.Physiotherapist{}).Error
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// Delete related records to prevent orphaned data
+		tx.Where("physiotherapist_id = ?", id).Delete(&models.TherapySession{})
+		tx.Where("physiotherapist_id = ?", id).Delete(&models.Appointment{})
+		
+		// Finally delete the physiotherapist
+		return tx.Where("id = ?", id).Delete(&models.Physiotherapist{}).Error
+	})
 }
 
 func (r *physiotherapistRepository) Restore(id string) error {

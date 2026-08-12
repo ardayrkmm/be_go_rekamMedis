@@ -43,6 +43,9 @@ func (u *physiotherapistUseCase) Store(physio *models.Physiotherapist) error {
 	if physio.Status == "" {
 		physio.Status = "Aktif"
 	}
+	if physio.Sip != nil && *physio.Sip == "" {
+		physio.Sip = nil
+	}
 
 	if physio.Password != "" && physio.Email != "" {
 		hashedPassword, err := utils.HashPassword(physio.Password)
@@ -69,9 +72,26 @@ func (u *physiotherapistUseCase) Update(id string, req *models.Physiotherapist) 
 		return err
 	}
 
+	if physio.Email != "" {
+		emailToFind := strings.ToLower(strings.TrimSpace(physio.Email))
+		user, errUser := u.userRepo.FindByEmail(emailToFind)
+		if errUser != nil || user == nil {
+			user, errUser = u.userRepo.FindByEmail(physio.Email)
+		}
+		if errUser == nil && user != nil && user.Role == string(models.RoleFisioterapis) {
+			user.Name = req.Name
+			user.Email = strings.ToLower(strings.TrimSpace(req.Email))
+			_ = u.userRepo.Update(user)
+		}
+	}
+
 	physio.Name = req.Name
 	physio.Specialization = req.Specialization
-	physio.Sip = req.Sip
+	if req.Sip != nil && *req.Sip == "" {
+		physio.Sip = nil
+	} else {
+		physio.Sip = req.Sip
+	}
 	physio.Phone = req.Phone
 	physio.Email = req.Email
 	physio.Address = req.Address
@@ -86,6 +106,17 @@ func (u *physiotherapistUseCase) Update(id string, req *models.Physiotherapist) 
 }
 
 func (u *physiotherapistUseCase) Delete(id string) error {
+	physio, err := u.physioRepo.FindByID(id)
+	if err == nil && physio.Email != "" {
+		emailToFind := strings.ToLower(strings.TrimSpace(physio.Email))
+		user, errUser := u.userRepo.FindByEmail(emailToFind)
+		if errUser != nil || user == nil {
+			user, errUser = u.userRepo.FindByEmail(physio.Email)
+		}
+		if errUser == nil && user != nil && user.Role == string(models.RoleFisioterapis) {
+			_ = u.userRepo.Delete(user.ID)
+		}
+	}
 	return u.physioRepo.Delete(id)
 }
 

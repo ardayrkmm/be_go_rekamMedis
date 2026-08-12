@@ -64,11 +64,43 @@ func (r *paymentRepository) Create(payment *models.Payment) error {
 }
 
 func (r *paymentRepository) Update(payment *models.Payment) error {
-	return r.db.Save(payment).Error
+	tx := r.db.Begin()
+	
+	// Hapus PaymentDetails lama jika ada update
+	if len(payment.PaymentDetails) > 0 {
+		if err := tx.Where("payment_id = ?", payment.ID).Delete(&models.PaymentDetail{}).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+		// Reset ID agar GORM membuat ulang
+		for i := range payment.PaymentDetails {
+			payment.PaymentDetails[i].ID = ""
+			payment.PaymentDetails[i].PaymentID = payment.ID
+		}
+	}
+	
+	if err := tx.Save(payment).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	
+	return tx.Commit().Error
 }
 
 func (r *paymentRepository) Delete(id string) error {
-	return r.db.Delete(&models.Payment{}, "id = ?", id).Error
+	tx := r.db.Begin()
+	
+	if err := tx.Where("payment_id = ?", id).Delete(&models.PaymentDetail{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	
+	if err := tx.Where("id = ?", id).Delete(&models.Payment{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	
+	return tx.Commit().Error
 }
 
 func (r *paymentRepository) FindByAppointmentID(appointmentID string) (*models.Payment, error) {

@@ -88,7 +88,7 @@ func (u *dashboardUsecase) GetAdminDashboardData(filter string) (gin.H, error) {
 func (u *dashboardUsecase) GetFisioDashboardData(userID string) (gin.H, error) {
 	physioID, err := u.repo.GetPhysioIDByUserID(userID)
 	if err != nil || physioID == "" {
-		return nil, errors.New("physiotherapist not found")
+		return nil, errors.New("Fisioterapis tidak ditemukan")
 	}
 
 	totalPatients, _ := u.repo.CountPhysioPatients(physioID)

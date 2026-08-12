@@ -28,6 +28,7 @@ func NewPaymentHandler(api *gin.RouterGroup, paymentUC usecase.PaymentUseCase) {
 		group.GET("/:id", handler.GetByID)
 		group.POST("", handler.Store)
 		group.PUT("/:id", handler.Update)
+		group.DELETE("/:id", handler.Delete)
 		group.PATCH("/:id/status", handler.UpdateStatus)
 		group.GET("/:id/pdf/download", handler.DownloadPDF)
 		group.GET("/:id/pdf/receipt/download", handler.DownloadReceiptPDF)
@@ -93,6 +94,17 @@ func (h *PaymentHandler) Update(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, http.StatusOK, "Payment updated successfully", req)
+}
+
+func (h *PaymentHandler) Delete(c *gin.Context) {
+	id := c.Param("id")
+	
+	if err := h.paymentUC.Delete(id); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error(), nil)
+		return
+	}
+	
+	utils.SuccessResponse(c, http.StatusOK, "Payment deleted successfully", nil)
 }
 
 type updateStatusRequest struct {

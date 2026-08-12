@@ -32,11 +32,11 @@ func NewAuthUseCase(userRepo repository.UserRepository, authRepo repository.Auth
 func (u *authUseCase) Login(email, password string) (string, *models.User, error) {
 	user, err := u.userRepo.FindByEmail(email)
 	if err != nil || user == nil {
-		return "", nil, errors.New("invalid email or password")
+		return "", nil, errors.New("Email atau password salah")
 	}
 
 	if !utils.CheckPasswordHash(password, user.Password) {
-		return "", nil, errors.New("invalid email or password")
+		return "", nil, errors.New("Email atau password salah")
 	}
 
 	token, err := utils.GenerateToken(user.ID, string(user.Role))
@@ -86,7 +86,7 @@ func (u *authUseCase) Logout(token string) error {
 func (u *authUseCase) ForgotPassword(email string) error {
 	_, err := u.userRepo.FindByEmail(email)
 	if err != nil {
-		return errors.New("user not found")
+		return errors.New("Pengguna tidak ditemukan")
 	}
 
 	// Generate a random token, in real world we send it via email
@@ -103,12 +103,12 @@ func (u *authUseCase) ForgotPassword(email string) error {
 func (u *authUseCase) ResetPassword(email, token, newPassword string) error {
 	_, err := u.authRepo.GetResetToken(email, token)
 	if err != nil {
-		return errors.New("invalid or expired token")
+		return errors.New("Token tidak valid atau sudah kedaluwarsa")
 	}
 
 	user, err := u.userRepo.FindByEmail(email)
 	if err != nil {
-		return errors.New("user not found")
+		return errors.New("Pengguna tidak ditemukan")
 	}
 
 	hashedPassword, err := utils.HashPassword(newPassword)
@@ -127,11 +127,11 @@ func (u *authUseCase) ResetPassword(email, token, newPassword string) error {
 func (u *authUseCase) ChangePassword(userID string, oldPassword, newPassword string) error {
 	user, err := u.userRepo.FindByID(userID)
 	if err != nil {
-		return errors.New("user not found")
+		return errors.New("Pengguna tidak ditemukan")
 	}
 
 	if !utils.CheckPasswordHash(oldPassword, user.Password) {
-		return errors.New("incorrect old password")
+		return errors.New("Password lama tidak sesuai")
 	}
 
 	hashedPassword, err := utils.HashPassword(newPassword)
