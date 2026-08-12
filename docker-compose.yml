@@ -53,8 +53,9 @@ services:
 
   frontend:
     build:
-      # Mencari folder frontend di sebelah folder backend
-      context: ../front_end
+      # Anda bisa mengatur folder frontend lewat env var FRONTEND_PATH, 
+      # secara default akan mencari ke folder ../fe_web_rme
+      context: ${FRONTEND_PATH:-../fe_web_rme}
       dockerfile: Dockerfile
       args:
         VITE_API_URL: /api/v1
