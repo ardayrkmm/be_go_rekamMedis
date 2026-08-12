@@ -33,5 +33,5 @@ volumes:
 
 networks:
   rekammedis_net:
-    driver: bridge
+    external: true
     name: rekammedis_net
