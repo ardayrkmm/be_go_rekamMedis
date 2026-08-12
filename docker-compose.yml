@@ -1,35 +1,4 @@
-version: '3.8'
-
 services:
-  db:
-    image: mysql:8.0
-    container_name: rekammedis_db
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: ardaganteng
-      MYSQL_DATABASE: rekam_medis
-    ports:
-      - "3306:3306"
-    volumes:
-      - db_data:/var/lib/mysql
-    networks:
-      - app_network
-
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    container_name: rekammedis_pma
-    restart: always
-    environment:
-      PMA_HOST: db
-      PMA_PORT: 3306
-      MYSQL_ROOT_PASSWORD: ardaganteng
-    ports:
-      - "8080:80"
-    depends_on:
-      - db
-    networks:
-      - app_network
-
   backend:
     build:
       context: .
@@ -43,34 +12,13 @@ services:
       - DB_USER=root
       - DB_PASSWORD=ardaganteng
       - DB_NAME=rekam_medis
-      - GOOGLE_APPLICATION_CREDENTIALS=/app/serviceAccountKey.json
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/rekamGo.json
     ports:
       - "8001:8001"
-    depends_on:
-      - db
     networks:
-      - app_network
-
-  frontend:
-    build:
-      # Anda bisa mengatur folder frontend lewat env var FRONTEND_PATH, 
-      # secara default akan mencari ke folder ../fe_web_rme
-      context: ${FRONTEND_PATH:-../fe_web_rme}
-      dockerfile: Dockerfile
-      args:
-        VITE_API_URL: /api/v1
-    container_name: rekammedis_frontend
-    restart: always
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
-    networks:
-      - app_network
-
-volumes:
-  db_data:
+      - rekammedis_net
 
 networks:
-  app_network:
-    driver: bridge
+  rekammedis_net:
+    external: true
+    name: rekammedis_net
